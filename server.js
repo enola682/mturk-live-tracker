@@ -3,14 +3,10 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
-const path = require('path');
 
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
-
-// আপনার ড্যাশবোর্ড ফাইলটি রুট ফোল্ডারে থাকলে এটি কাজ করবে
-app.use(express.static(path.join(__dirname, '/'))); 
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -23,12 +19,11 @@ async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
         const response = await axios.get(url);
-        
-        // JSON রেসপন্স পার্স করা
         const jsonText = response.data.substring(response.data.indexOf('(') + 1, response.data.lastIndexOf(')'));
         const data = JSON.parse(jsonText);
         
         let updatedTeams = {};
+        // শিটের সব ডাটা লুপ করে অটোমেটিক ম্যাপ করবে
         data.table.rows.forEach(row => {
             const id = row.c[0]?.v ? row.c[0].v.toString().trim() : null;
             if (id) {
@@ -39,11 +34,10 @@ async function syncGoogleSheet() {
             }
         });
         userTeams = updatedTeams;
-        console.log("Sync Successful! Loaded IDs:", Object.keys(userTeams));
+        console.log("Sync Successful! Active Workers found:", Object.keys(userTeams).length);
     } catch (e) { console.log("Sync Error:", e); }
 }
 
-// প্রতি ৩০ সেকেন্ডে শিট সিঙ্ক হবে
 setInterval(syncGoogleSheet, 30000);
 syncGoogleSheet();
 
@@ -51,6 +45,7 @@ app.post('/api/update-hits', (req, res) => {
     req.body.hits.forEach(hit => {
         if (!hit.title || hit.title === "Show Details" || hit.title.includes("Queue")) return;
         
+        // এখানে শিট থেকে অটোমেটিক ম্যাচ করা হচ্ছে
         const info = userTeams[hit.workerId] || { username: hit.workerId, team: 'Unknown Team' };
         hit.username = info.username;
         hit.team = info.team;
@@ -63,10 +58,5 @@ app.post('/api/update-hits', (req, res) => {
     res.sendStatus(200);
 });
 
-app.post('/api/reset', (req, res) => { 
-    liveHits = []; 
-    io.emit('dashboard-update', { liveHits }); 
-    res.sendStatus(200); 
-});
-
-server.listen(process.env.PORT || 5000, () => console.log('Server running...'));
+app.post('/api/reset', (req, res) => { liveHits = []; io.emit('dashboard-update', { liveHits }); res.sendStatus(200); });
+server.listen(process.env.PORT || 5000);
