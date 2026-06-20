@@ -3,10 +3,14 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
+const path = require('path');
 
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
+
+// ড্যাশবোর্ড ফাইল দেখানোর ব্যবস্থা (এটিই Missing ছিল)
+app.use(express.static(path.join(__dirname, '/')));
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -23,7 +27,6 @@ async function syncGoogleSheet() {
         const data = JSON.parse(jsonText);
         
         let updatedTeams = {};
-        // শিটের সব ডাটা লুপ করে অটোমেটিক ম্যাপ করবে
         data.table.rows.forEach(row => {
             const id = row.c[0]?.v ? row.c[0].v.toString().trim() : null;
             if (id) {
@@ -44,12 +47,9 @@ syncGoogleSheet();
 app.post('/api/update-hits', (req, res) => {
     req.body.hits.forEach(hit => {
         if (!hit.title || hit.title === "Show Details" || hit.title.includes("Queue")) return;
-        
-        // এখানে শিট থেকে অটোমেটিক ম্যাচ করা হচ্ছে
         const info = userTeams[hit.workerId] || { username: hit.workerId, team: 'Unknown Team' };
         hit.username = info.username;
         hit.team = info.team;
-
         const idx = liveHits.findIndex(h => h.title === hit.title && h.workerId === hit.workerId);
         if (idx > -1) liveHits[idx] = { ...liveHits[idx], ...hit };
         else liveHits.unshift(hit);
@@ -59,4 +59,4 @@ app.post('/api/update-hits', (req, res) => {
 });
 
 app.post('/api/reset', (req, res) => { liveHits = []; io.emit('dashboard-update', { liveHits }); res.sendStatus(200); });
-server.listen(process.env.PORT || 5000);
+server.listen(process.env.PORT || 5000, () => console.log('Server running...'));
