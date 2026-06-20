@@ -3,13 +3,13 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
-const path = require('path'); // নতুন লাইন
+const path = require('path');
 
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// ড্যাশবোর্ড ফাইল দেখানোর জন্য
+// আপনার ড্যাশবোর্ড ফাইলটি রুট ফোল্ডারে থাকলে এটি কাজ করবে
 app.use(express.static(path.join(__dirname, '/'))); 
 
 const server = http.createServer(app);
@@ -23,7 +23,9 @@ async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
         const response = await axios.get(url);
-        const jsonText = response.data.match(/google\.visualization\.Query\.setResponse\(([\s\S\n\r]*)\);/)[1];
+        
+        // JSON রেসপন্স পার্স করা
+        const jsonText = response.data.substring(response.data.indexOf('(') + 1, response.data.lastIndexOf(')'));
         const data = JSON.parse(jsonText);
         
         let updatedTeams = {};
@@ -31,15 +33,17 @@ async function syncGoogleSheet() {
             const id = row.c[0]?.v ? row.c[0].v.toString().trim() : null;
             if (id) {
                 updatedTeams[id] = { 
-                    username: row.c[1]?.v ? row.c[1].v.toString().trim() : id, 
+                    username: row.c[1]?.v ? row.c[1].v.toString() : id, 
                     team: row.c[2]?.v ? row.c[2].v.toString().trim() : 'Unknown Team' 
                 };
             }
         });
         userTeams = updatedTeams;
-    } catch (e) { console.log("Sync Error"); }
+        console.log("Sync Successful! Loaded IDs:", Object.keys(userTeams));
+    } catch (e) { console.log("Sync Error:", e); }
 }
 
+// প্রতি ৩০ সেকেন্ডে শিট সিঙ্ক হবে
 setInterval(syncGoogleSheet, 30000);
 syncGoogleSheet();
 
@@ -59,6 +63,10 @@ app.post('/api/update-hits', (req, res) => {
     res.sendStatus(200);
 });
 
-app.post('/api/reset', (req, res) => { liveHits = []; io.emit('dashboard-update', { liveHits }); res.sendStatus(200); });
+app.post('/api/reset', (req, res) => { 
+    liveHits = []; 
+    io.emit('dashboard-update', { liveHits }); 
+    res.sendStatus(200); 
+});
 
 server.listen(process.env.PORT || 5000, () => console.log('Server running...'));
