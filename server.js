@@ -97,6 +97,9 @@ app.post('/api/reset', (req, res) => {
     io.emit('dashboard-update', { liveHits, historyLog });
     res.sendStatus(200);
 });
-
+// এই কোডটি ব্রাউজারে index.html ফাইলটি সরাসরি লোড করবে
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`🚀 Pro Server Running live on port ${PORT}`));
