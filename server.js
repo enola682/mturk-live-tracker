@@ -3,10 +3,14 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
+const path = require('path'); // নতুন লাইন
 
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
+
+// ড্যাশবোর্ড ফাইল দেখানোর জন্য
+app.use(express.static(path.join(__dirname, '/'))); 
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -57,4 +61,4 @@ app.post('/api/update-hits', (req, res) => {
 
 app.post('/api/reset', (req, res) => { liveHits = []; io.emit('dashboard-update', { liveHits }); res.sendStatus(200); });
 
-server.listen(process.env.PORT || 5000);
+server.listen(process.env.PORT || 5000, () => console.log('Server running...'));
