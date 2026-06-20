@@ -3,20 +3,21 @@ const app = express();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server, { cors: { origin: "*" } });
 const cors = require('cors');
+const path = require('path');
 
 app.use(cors());
 app.use(express.json());
 
-// আরডিপি থেকে হিট রিসিভ করার এন্ডপয়েন্ট
+// গুরুত্বপূর্ণ: আপনার index.html ফাইলটি যেখানে আছে সেই ফোল্ডারটি রুট হিসেবে সেট করা
+app.use(express.static(path.join(__dirname, '/')));
+
 app.post('/api/update-hits', (req, res) => {
-    console.log("Data Received from RDP");
     io.emit('dashboard-update', { liveHits: req.body.hits });
     res.sendStatus(200);
 });
 
-// ড্যাশবোর্ডে কানেকশন হ্যান্ডলার
 io.on('connection', (socket) => {
-    console.log('Dashboard connected');
+    console.log('Client connected');
 });
 
 const PORT = process.env.PORT || 10000;
