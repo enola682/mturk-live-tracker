@@ -1,17 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>MTurk Pro Tracker</title>
+    <meta charset="UTF-8">
+    <title>MTurk Pro Tracker - LIVE</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0b0e14; color: white; padding: 20px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .hit-item { background: #1a1f29; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #00a8ff; }
+    </style>
 </head>
 <body>
-    <div id="sync-time">Last Cloud Sync: --:--:--</div>
+    <div class="header">
+        <h1>MTurk Pro Tracker // LIVE</h1>
+        <div id="sync-time">Last Cloud Sync: --:--:--</div>
+    </div>
     <div id="hits-container">Waiting for real-time cloud streams...</div>
+
     <script>
+        // সার্ভারের সাথে কানেকশন
         const socket = io("https://mturk-live-tracker.onrender.com");
+        
+        socket.on('connect', () => {
+            console.log("Connected to server!");
+        });
+
+        // সার্ভার থেকে আপডেট আসা মাত্রই ফাংশনটি চলবে
         socket.on('dashboard-update', (data) => {
+            console.log("Data Received from Server:", data);
+            
+            // সময় আপডেট করা
             document.getElementById('sync-time').innerText = "Last Cloud Sync: " + new Date().toLocaleTimeString();
-            console.log("Data Received:", data);
+            
+            const container = document.getElementById('hits-container');
+            
+            // ডেটা থাকলে দেখাবে, না থাকলে মেসেজ দিবে
+            if (data.liveHits && data.liveHits.length > 0) {
+                container.innerHTML = data.liveHits.map(hit => `
+                    <div class="hit-item">
+                        <strong>Title:</strong> ${hit.title} | <strong>Reward:</strong> ${hit.reward} | <strong>Worker:</strong> ${hit.workerId}
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = "No active hits right now.";
+            }
         });
     </script>
 </body>
