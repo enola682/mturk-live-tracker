@@ -17,8 +17,7 @@ app.post('/api/update-hits', (req, res) => {
 // ড্যাশবোর্ডে কানেকশন হ্যান্ডলার
 io.on('connection', (socket) => {
     console.log('Dashboard connected');
-    socket.emit('dashboard-update', { liveHits: [] }); // কানেক্ট হওয়ার সাথে সাথে ব্ল্যাঙ্ক ডেটা পাঠাবে
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
