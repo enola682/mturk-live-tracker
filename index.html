@@ -9,13 +9,13 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #080b11; color: #94a3b8; padding: 15px; }
         
-        /* Premium Header Styling matching image_51865a.jpg */
+        /* ড্যাশবোর্ড হেডার - অপরিবর্তিত */
         .top-navbar { display: flex; justify-content: space-between; align-items: center; background: #0f141c; padding: 10px 20px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #00b894; }
         .logo-area { font-size: 16px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px; }
         .live-dot { background: #00b894; padding: 2px 6px; border-radius: 3px; font-size: 10px; color: #fff; }
         .sync-msg { color: #475569; font-size: 11px; }
 
-        /* Filter Controls Group */
+        /* ফিল্টার কন্ট্রোল রো - অপরিবর্তিত */
         .controls-row { display: flex; gap: 8px; background: #0f141c; padding: 10px; border-radius: 6px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
         .nav-btn { background: #151b26; border: 1px solid #1e293b; color: #fff; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
         .nav-btn.active { background: #1e293b; border-color: #3b82f6; }
@@ -24,7 +24,7 @@
         .btn-action { padding: 5px 12px; font-size: 12px; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; }
         .btn-reset { background: #dc2626; color: #fff; }
 
-        /* Stats Blocks Layout */
+        /* স্ট্যাটাস কাউন্টার বক্স গ্রিড - অপরিবর্তিত */
         .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 15px; }
         .stat-box { background: #0f141c; padding: 12px; border-radius: 6px; border: 1px solid #131924; position: relative; }
         .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; border-radius: 0 0 6px 6px; }
@@ -39,36 +39,35 @@
         .stat-box span { font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px; }
         .stat-box h2 { font-size: 20px; color: #fff; font-weight: 700; }
 
-        /* Accordion Collapsible Rows Section */
+        /* ওরিজিনাল অ্যাকোর্ডিয়ান রো ডিজাইন (image_5179fe.png ম্যাচড) */
         .accordion-wrapper { margin-bottom: 10px; background: #0f141c; border-radius: 6px; overflow: hidden; border: 1px solid #131924; }
         .accordion-header { background: #131924; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .accordion-title { font-size: 13px; font-weight: bold; color: #3b82f6; display: flex; align-items: center; gap: 6px; }
+        .accordion-title { font-size: 13px; font-weight: bold; color: #00b894; display: flex; align-items: center; gap: 6px; }
         .accordion-badges { display: flex; gap: 6px; align-items: center; }
-        .badge-ui { font-size: 10px; padding: 2px 6px; border-radius: 3px; color: #fff; font-weight: 600; }
+        .badge-ui { font-size: 11px; padding: 2px 8px; border-radius: 12px; color: #fff; font-weight: 600; }
 
-        /* Table Design */
+        /* টেবিল কলাম স্ট্রাকচার */
         .table-area { width: 100%; border-collapse: collapse; text-align: left; }
         th { background: #0b0f17; color: #475569; padding: 10px 12px; font-size: 11px; text-transform: uppercase; font-weight: 600; }
         td { padding: 9px 12px; border-bottom: 1px solid #131924; font-size: 12px; color: #cbd5e1; }
         tr:hover { background: #131924; }
         
-        /* Status Color Badges */
-        .status-badge { font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; display: inline-block; }
-        .st-active { background: rgba(0, 184, 148, 0.15); color: #00b894; }
-        .st-submitted { background: rgba(249, 115, 22, 0.15); color: #f97316; }
-        .st-returned { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        /* স্ট্যাটাস ব্যাজ স্টাইল */
+        .status-badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 12px; text-transform: uppercase; display: inline-block; }
+        .st-active { background: rgba(0, 184, 148, 0.15); color: #00b894; border: 1px solid #00b894; }
+        .st-submitted { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid #3b82f6; }
+        .st-returned { background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid #f97316; }
         .st-expired { background: rgba(100, 116, 139, 0.15); color: #64748b; }
     </style>
 </head>
 <body>
 
-    <!-- Header Grid -->
+    <!-- মেইন ড্যাশবোর্ড হেডার এবং কাউন্টার প্যানেল হুবহু আগের মতোই থাকবে -->
     <div class="top-navbar">
         <div class="logo-area">MTurk HIT Tracker // <span class="live-dot">LIVE</span></div>
         <div id="sync-clock" class="sync-msg">Synced: --:--:--</div>
     </div>
 
-    <!-- Original Controls Row -->
     <div class="controls-row">
         <button class="nav-btn active">Live</button>
         <button class="nav-btn">Hourly</button>
@@ -87,7 +86,6 @@
         </div>
     </div>
 
-    <!-- Stats Panel -->
     <div class="stats-row">
         <div class="stat-box box-active"><span>Active Now</span><h2 id="s-active">0</h2></div>
         <div class="stat-box box-total"><span>Total Hits</span><h2 id="s-total">0</h2></div>
@@ -98,7 +96,7 @@
         <div class="stat-box box-ret"><span>Returned</span><h2 id="s-returned">0</h2></div>
     </div>
 
-    <!-- Accordion Data Container Container -->
+    <!-- ডাটা কন্টেইনার জোন -->
     <div id="accordion-container"></div>
 
     <script>
@@ -119,8 +117,8 @@
 
             let teams = new Set(['all']), workers = new Set(['all']);
             streamData.forEach(h => {
-                if(h.team) teams.add(h.team);
-                if(h.username) workers.add(h.username);
+                if(h.team && h.team !== 'Unknown Team') teams.add(h.team);
+                if(h.workerName) workers.add(h.workerName);
             });
 
             tSel.innerHTML = Array.from(teams).map(t => `<option value="${t}">${t==='all'?'All Teams':t}</option>`).join('');
@@ -136,13 +134,13 @@
 
             const filtered = streamData.filter(h => {
                 if (team !== 'all' && h.team !== team) return false;
-                if (worker !== 'all' && h.username !== worker) return false;
+                if (worker !== 'all' && h.workerName !== worker) return false;
                 if (status !== 'all' && (h.status||'').toLowerCase() !== status) return false;
                 return true;
             });
 
             calculateStats(filtered);
-            renderAccordionStructure(filtered);
+            renderWorkerAccordion(filtered);
         }
 
         function calculateStats(hits) {
@@ -155,7 +153,9 @@
                 if(s === 'submitted') sub++;
                 if(s === 'returned') ret++;
                 
-                earned += parseFloat(h.reward?.toString().replace('$', '')) || 0;
+                if(s === 'submitted') {
+                    earned += parseFloat(h.reward?.toString().replace('$', '')) || 0;
+                }
                 if(h.workerId) wSet.add(h.workerId);
                 if(h.team && h.team !== 'Unknown Team') tSet.add(h.team);
             });
@@ -169,8 +169,8 @@
             document.getElementById('s-returned').innerText = ret;
         }
 
-        // ওরিজিনাল অ্যাকোর্ডিয়ান লজিক বিল্ড আপ (টিম ওয়াইজ ড্রপডাউন গ্রুপ)
-        function renderAccordionStructure(hits) {
+        // ওরিজিনাল স্ক্রিনশট (image_5179fe.png) অনুযায়ী নিখুঁত রি-বিল্ড গ্রুপিং লজিক
+        function renderWorkerAccordion(hits) {
             const container = document.getElementById('accordion-container');
             container.innerHTML = "";
 
@@ -179,33 +179,34 @@
                 return;
             }
 
-            // টিম অনুযায়ী ডাটা গ্রুপ করা
             let grouped = {};
             hits.forEach(h => {
-                const groupKey = h.team || "Unknown Team";
+                const groupKey = h.workerName || "Unknown Worker";
                 if(!grouped[groupKey]) grouped[groupKey] = [];
                 grouped[groupKey].push(h);
             });
 
-            Object.keys(grouped).forEach(teamName => {
-                const teamHits = grouped[teamName];
+            Object.keys(grouped).forEach(workerName => {
+                const workerHits = grouped[workerName];
                 
-                let activeCount = teamHits.filter(h => (h.status||'').toLowerCase() === 'active').length;
-                let subCount = teamHits.filter(h => (h.status||'').toLowerCase() === 'submitted').length;
-                let retCount = teamHits.filter(h => (h.status||'').toLowerCase() === 'returned').length;
-                let totalCash = teamHits.reduce((acc, h) => acc + (parseFloat(h.reward?.toString().replace('$', '')) || 0), 0);
+                let activeCount = workerHits.filter(h => (h.status||'').toLowerCase() === 'active').length;
+                let subCount = workerHits.filter(h => (h.status||'').toLowerCase() === 'submitted').length;
+                let retCount = workerHits.filter(h => (h.status||'').toLowerCase() === 'returned').length;
+                let expCount = workerHits.filter(h => (h.status||'').toLowerCase() === 'expired').length;
+                let totalCash = workerHits.reduce((acc, h) => acc + (parseFloat(h.reward?.toString().replace('$', '')) || 0), 0);
 
                 const wrapper = document.createElement('div');
                 wrapper.className = "accordion-wrapper";
 
                 wrapper.innerHTML = `
                     <div class="accordion-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'table' : 'none'">
-                        <div class="accordion-title">📂 ${teamName} <span style="color:#64748b; font-size:11px;">(${teamHits.length})</span></div>
+                        <div class="accordion-title">👤 ${workerName.toUpperCase()} <span style="color:#475569; font-size:11px; font-weight:normal;">(${workerHits.length})</span></div>
                         <div class="accordion-badges">
-                            <span class="badge-ui" style="background:#00b894;">${activeCount} Active</span>
-                            <span class="badge-ui" style="background:#f97316;">${subCount} Done</span>
-                            <span class="badge-ui" style="background:#ef4444;">${retCount} Ret</span>
-                            <span class="badge-ui" style="background:#eab308; color:#000;">$${totalCash.toFixed(2)}</span>
+                            <span class="badge-ui" style="background:#00b894;">🟢 ${activeCount} Active</span>
+                            <span class="badge-ui" style="background:#3b82f6;">✓ ${subCount} Done</span>
+                            <span class="badge-ui" style="background:#f97316;">↱ M:${retCount}</span>
+                            <span class="badge-ui" style="background:#ef4444;">⚠ A:${expCount}</span>
+                            <span class="badge-ui" style="background:rgba(234,179,8,0.2); color:#eab308; border:1px solid #eab308;">$${totalCash.toFixed(2)}</span>
                         </div>
                     </div>
                     <table class="table-area">
@@ -216,24 +217,24 @@
                                 <th>Requester</th>
                                 <th>Title</th>
                                 <th>Reward</th>
-                                <th>Accepted Time</th>
+                                <th>Accepted</th>
                                 <th>Time Left</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${teamHits.map(h => {
+                            ${workerHits.map(h => {
                                 const st = (h.status || 'Active').toLowerCase();
                                 const classMap = st==='submitted'?'st-submitted':st==='returned'?'st-returned':st==='expired'?'st-expired':'st-active';
                                 return `
                                     <tr>
                                         <td style="font-family:monospace; color:#3b82f6;">${h.workerId}</td>
                                         <td><b>${h.username}</b></td>
-                                        <td style="color:#00b894;">${h.requester}</td>
+                                        <td style="color:#00b894; font-weight:600;">${h.requester}</td>
                                         <td>${h.title}</td>
                                         <td style="color:#eab308; font-weight:bold;">${h.reward}</td>
-                                        <td>${h.accepted}</td>
-                                        <td>${h.timeLeft}</td>
+                                        <td style="color:#64748b; font-size:11px;">${h.accepted}</td>
+                                        <td style="color:#00b894; font-weight:600;">${h.timeLeft}</td>
                                         <td><span class="status-badge ${classMap}">${h.status}</span></td>
                                     </tr>
                                 `;
