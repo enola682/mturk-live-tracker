@@ -3,69 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTurk HIT Tracker // LIVE</title>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <title>MTURK PRO // LIVE CLOUD</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #080b11; color: #94a3b8; padding: 15px; }
         
-        .top-navbar { display: flex; justify-content: space-between; align-items: center; background: #0f141c; padding: 10px 20px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #00b894; }
-        .logo-area { font-size: 16px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px; }
-        .live-dot { background: #00b894; padding: 2px 6px; border-radius: 3px; font-size: 10px; color: #fff; }
-        .sync-msg { color: #475569; font-size: 11px; }
+        /* মেইন প্রিমিয়াম হেডার */
+        .top-navbar { display: flex; justify-content: space-between; align-items: center; background: #0f141c; padding: 12px 20px; border-radius: 6px; margin-bottom: 15px; border-bottom: 2px solid #00b894; }
+        .logo-area { font-size: 18px; font-weight: bold; color: #3b82f6; display: flex; align-items: center; gap: 8px; }
+        .live-dot { background: #00b894; padding: 2px 8px; border-radius: 4px; font-size: 10px; color: #fff; font-weight: bold; }
+        .sync-msg { color: #64748b; font-size: 12px; font-family: monospace; }
 
-        .controls-row { display: flex; gap: 8px; background: #0f141c; padding: 10px; border-radius: 6px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
-        .nav-btn { background: #151b26; border: 1px solid #1e293b; color: #fff; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
-        .nav-btn.active { background: #1e293b; border-color: #3b82f6; }
-        select { background: #151b26; border: 1px solid #1e293b; color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 12px; outline: none; }
-        .right-buttons { margin-left: auto; display: flex; gap: 8px; }
-        .btn-action { padding: 5px 12px; font-size: 12px; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; }
-        .btn-reset { background: #dc2626; color: #fff; }
+        /* ফিল্টার ও বাটন কন্ট্রোল এরিয়া */
+        .controls-row { display: flex; gap: 10px; background: #0f141c; padding: 12px; border-radius: 6px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+        select { background: #151b26; border: 1px solid #1e293b; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; outline: none; cursor: pointer; }
+        .time-filters { display: flex; gap: 5px; }
+        .btn-time { background: #151b26; border: 1px solid #1e293b; color: #64748b; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; }
+        .btn-time.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+        .right-buttons { margin-left: auto; }
+        .btn-reset { background: #dc2626; color: #fff; border: none; padding: 6px 15px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        .btn-reset:hover { background: #b91c1c; }
 
-        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 15px; }
-        .stat-box { background: #0f141c; padding: 12px; border-radius: 6px; border: 1px solid #131924; position: relative; }
+        /* ওরিজিনাল ৮-বক্স স্ট্যাটাস গ্রিড লেআউট */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px; }
+        .stat-box { background: #0f141c; padding: 15px; border-radius: 6px; border: 1px solid #131924; text-align: center; position: relative; }
         .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; border-radius: 0 0 6px 6px; }
-        .box-active::after { background: #06b6d4; }
+        
+        .box-active::after { background: #00b894; }
         .box-total::after { background: #3b82f6; }
         .box-earned::after { background: #eab308; }
         .box-workers::after { background: #a855f7; }
-        .box-teams::after { background: #00b894; }
+        .box-teams::after { background: #06b6d4; }
         .box-sub::after { background: #f97316; }
         .box-ret::after { background: #ef4444; }
         
-        .stat-box span { font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px; }
-        .stat-box h2 { font-size: 20px; color: #fff; font-weight: 700; }
+        .stat-box span { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; display: block; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .stat-box h2 { font-size: 22px; color: #fff; font-weight: 700; }
+        .box-earned h2 { color: #eab308; }
+        .box-active h2 { color: #00b894; }
 
-        /* Accordion (Worker/ID Wise) */
-        .accordion-wrapper { margin-bottom: 10px; background: #0f141c; border-radius: 6px; overflow: hidden; border: 1px solid #131924; }
-        .accordion-header { background: #131924; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .accordion-title { font-size: 13px; font-weight: bold; color: #00b894; display: flex; align-items: center; gap: 6px; }
-        .accordion-badges { display: flex; gap: 6px; align-items: center; }
-        .badge-ui { font-size: 11px; padding: 2px 8px; border-radius: 12px; color: #fff; font-weight: 600; }
+        /* গ্রুপিং উইজার অ্যাকোর্ডিয়ান র‍্যাপার */
+        .accordion-wrapper { margin-bottom: 12px; background: #0f141c; border-radius: 6px; overflow: hidden; border: 1px solid #131924; }
+        .accordion-header { background: #131924; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+        .accordion-title { font-size: 14px; font-weight: bold; color: #00b894; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
+        .accordion-badges { display: flex; gap: 8px; align-items: center; }
+        .badge-ui { font-size: 11px; padding: 3px 10px; border-radius: 12px; color: #fff; font-weight: 600; }
 
-        .table-area { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #0b0f17; color: #475569; padding: 10px 12px; font-size: 11px; text-transform: uppercase; font-weight: 600; }
-        td { padding: 9px 12px; border-bottom: 1px solid #131924; font-size: 12px; color: #cbd5e1; }
+        /* ডাটা টেবিল এরিয়া */
+        .table-area { width: 100%; border-collapse: collapse; text-align: left; display: table; }
+        th { background: #0b0f17; color: #475569; padding: 12px 15px; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        td { padding: 10px 15px; border-bottom: 1px solid #131924; font-size: 12px; color: #cbd5e1; }
         tr:hover { background: #131924; }
         
-        .status-badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 12px; text-transform: uppercase; display: inline-block; }
+        /* স্ট্যাটাস ব্যাজ */
+        .status-badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block; }
         .st-active { background: rgba(0, 184, 148, 0.15); color: #00b894; border: 1px solid #00b894; }
         .st-submitted { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid #3b82f6; }
         .st-returned { background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid #f97316; }
-        .st-expired { background: rgba(100, 116, 139, 0.15); color: #64748b; }
+        .st-expired { background: rgba(100, 116, 139, 0.15); color: #64748b; border: 1px solid #475569; }
     </style>
 </head>
 <body>
 
     <div class="top-navbar">
-        <div class="logo-area">MTurk HIT Tracker // <span class="live-dot">LIVE</span></div>
-        <div id="sync-clock" class="sync-msg">Synced: --:--:--</div>
+        <div class="logo-area">MTURK PRO // <span class="live-dot">• 24/7 CLOUD LIVE</span></div>
+        <div id="sync-clock" class="sync-msg">Last Cloud Sync: --:--:--</div>
     </div>
 
     <div class="controls-row">
-        <button class="nav-btn active">Live</button>
-        <button class="nav-btn">Hourly</button>
-        <select id="filter-team" onchange="applyFilters()"><option value="all">All Teams</option></select>
+        <select id="filter-team" onchange="applyFilters()"><option value="all">All Teams (গুদ্ধগল শিট)</option></select>
         <select id="filter-worker" onchange="applyFilters()"><option value="all">All Workers</option></select>
         <select id="filter-status" onchange="applyFilters()">
             <option value="all">All Status</option>
@@ -74,30 +81,44 @@
             <option value="returned">Returned</option>
             <option value="expired">Expired</option>
         </select>
+        <div class="time-filters">
+            <button class="btn-time active">Today</button>
+            <button class="btn-time">7 Days</button>
+            <button class="btn-time">30 Days</button>
+        </div>
         <div class="right-buttons">
-            <button class="btn-action" style="background:#1e293b; color:#fff;">Export CSV</button>
-            <button class="btn-action btn-reset" onclick="triggerReset()">Reset</button>
+            <button class="btn-reset" onclick="triggerReset()">Reset Database</button>
         </div>
     </div>
 
     <div class="stats-row">
         <div class="stat-box box-active"><span>Active Now</span><h2 id="s-active">0</h2></div>
-        <div class="stat-box box-total"><span>Total Hits</span><h2 id="s-total">0</h2></div>
-        <div class="stat-box box-earned"><span>Earned ($)</span><h2 id="s-earned">$0.00</h2></div>
-        <div class="stat-box box-workers"><span>Workers</span><h2 id="s-workers">0</h2></div>
-        <div class="stat-box box-teams"><span>Teams</span><h2 id="s-teams">0</h2></div>
+        <div class="stat-box box-total"><span>Total Selected Hits</span><h2 id="s-total">0</h2></div>
+        <div class="stat-box box-earned"><span>Estimated Earned</span><h2 id="s-earned">$0.00</h2></div>
+        <div class="stat-box box-workers"><span>Active Workers</span><h2 id="s-workers">0</h2></div>
+        <div class="stat-box box-teams"><span>Active Teams</span><h2 id="s-teams">0</h2></div>
         <div class="stat-box box-sub"><span>Submitted</span><h2 id="s-submitted">0</h2></div>
         <div class="stat-box box-ret"><span>Returned</span><h2 id="s-returned">0</h2></div>
     </div>
 
-    <div id="accordion-container"></div>
+    <div id="accordion-container">
+        <div style="text-align:center; padding:40px; background:#0f141c; border-radius:6px; font-weight:600;">Waiting for real-time cloud streams...</div>
+    </div>
 
     <script>
-        const socket = io("https://mturk-live-tracker.onrender.com");
+        // ক্লাউড সকেট ফোর্স হ্যান্ডশেক মোড ফিক্স
+        const socket = io("/", {
+            transports: ["websocket", "polling"]
+        });
+        
         let streamData = [];
 
+        socket.on('connect', () => {
+            console.log("Real-time Stream Connected Successfully");
+        });
+
         socket.on('dashboard-update', (data) => {
-            document.getElementById('sync-clock').innerText = "Synced: " + new Date().toLocaleTimeString();
+            document.getElementById('sync-clock').innerText = "Last Cloud Sync: " + new Date().toLocaleTimeString();
             streamData = data.liveHits || [];
             repopulateFilters();
             applyFilters();
@@ -110,13 +131,12 @@
 
             let teams = new Set(['all']), workers = new Set(['all']);
             streamData.forEach(h => {
-                if(h.team && h.team !== 'Unknown Team') teams.add(h.team);
-                // ফালব্যাক মেকানিজম: যদি workerName না থাকে, তবে workerId বা username ফিল্টারে যাবে
-                const dispName = h.workerName || h.username || h.workerId;
-                if(dispName) workers.add(dispName);
+                if(h.team && h.team !== 'Unknown') teams.add(h.team);
+                const identity = h.workerName || h.username || h.workerId;
+                if(identity) workers.add(identity);
             });
 
-            tSel.innerHTML = Array.from(teams).map(t => `<option value="${t}">${t==='all'?'All Teams':t}</option>`).join('');
+            tSel.innerHTML = Array.from(teams).map(t => `<option value="${t}">${t==='all'?'All Teams (গুগল শিট)':t}</option>`).join('');
             wSel.innerHTML = Array.from(workers).map(w => `<option value="${w}">${w==='all'?'All Workers':w}</option>`).join('');
             tSel.value = teams.has(tVal) ? tVal : 'all';
             wSel.value = workers.has(wVal) ? wVal : 'all';
@@ -128,9 +148,9 @@
             const status = document.getElementById('filter-status').value;
 
             const filtered = streamData.filter(h => {
-                const dispName = h.workerName || h.username || h.workerId;
+                const identity = h.workerName || h.username || h.workerId;
                 if (team !== 'all' && h.team !== team) return false;
-                if (worker !== 'all' && dispName !== worker) return false;
+                if (worker !== 'all' && identity !== worker) return false;
                 if (status !== 'all' && (h.status||'').toLowerCase() !== status) return false;
                 return true;
             });
@@ -149,11 +169,11 @@
                 if(s === 'submitted') sub++;
                 if(s === 'returned') ret++;
                 
-                if(s === 'submitted') {
+                if(s === 'submitted' || s === 'active') {
                     earned += parseFloat(h.reward?.toString().replace('$', '')) || 0;
                 }
                 if(h.workerId) wSet.add(h.workerId);
-                if(h.team && h.team !== 'Unknown Team') tSet.add(h.team);
+                if(h.team && h.team !== 'Unknown') tSet.add(h.team);
             });
 
             document.getElementById('s-active').innerText = active;
@@ -165,7 +185,7 @@
             document.getElementById('s-returned').innerText = ret;
         }
 
-        // গ্রুপিং লজিক ফিক্স: ডাটা কোনো অবস্থাতেই ড্রপ হবে না
+        // ওরিজিনাল গ্রুপ অ্যাকোর্ডিয়ান বিল্ডার
         function renderWorkerAccordion(hits) {
             const container = document.getElementById('accordion-container');
             container.innerHTML = "";
@@ -177,7 +197,6 @@
 
             let grouped = {};
             hits.forEach(h => {
-                // মেইন ফিক্স: গুগল শিটের নাম না পেলে এক্সটেনশনের ইউজারনেম/আইডি দিয়েই গ্রুপ হেডার তৈরি হবে
                 const groupKey = h.workerName || h.username || h.workerId || "Unknown Worker";
                 if(!grouped[groupKey]) grouped[groupKey] = [];
                 grouped[groupKey].push(h);
@@ -209,13 +228,12 @@
                     <table class="table-area">
                         <thead>
                             <tr>
-                                <th>Worker ID</th>
-                                <th>Username</th>
+                                <th>Team Name</th>
+                                <th>Worker Name (ID)</th>
                                 <th>Requester</th>
-                                <th>Title</th>
+                                <th>Hit Title</th>
                                 <th>Reward</th>
-                                <th>Accepted</th>
-                                <th>Time Left</th>
+                                <th>Time Left / Date</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -223,15 +241,16 @@
                             ${workerHits.map(h => {
                                 const st = (h.status || 'Active').toLowerCase();
                                 const classMap = st==='submitted'?'st-submitted':st==='returned'?'st-returned':st==='expired'?'st-expired':'st-active';
+                                // 'COPIED' বা আইডি ডাবল রিপিটেশন ফিক্সড ভিউ
+                                const finalDisplayID = h.workerId === h.username ? h.workerId : `${h.username} (${h.workerId})`;
                                 return `
                                     <tr>
-                                        <td style="font-family:monospace; color:#3b82f6;">${h.workerId}</td>
-                                        <td><b>${h.username || '-'}</b></td>
-                                        <td style="color:#3b82f6; font-weight:600;">${h.requester}</td>
+                                        <td style="color:#3b82f6; font-weight:600;">${h.team}</td>
+                                        <td style="font-family:monospace;">${finalDisplayID}</td>
+                                        <td>${h.requester}</td>
                                         <td>${h.title}</td>
-                                        <td style="color:#eab308; font-weight:bold;">${h.reward}</td>
-                                        <td style="color:#64748b; font-size:11px;">${h.accepted}</td>
-                                        <td style="color:#00b894; font-weight:600;">${h.timeLeft}</td>
+                                        <td style="color:#00b894; font-weight:bold;">${h.reward}</td>
+                                        <td>${h.timeLeft}</td>
                                         <td><span class="status-badge ${classMap}">${h.status}</span></td>
                                     </tr>
                                 `;
@@ -245,7 +264,7 @@
 
         function triggerReset() {
             if(confirm("Confirm reset layout dashboard database?")) {
-                fetch("https://mturk-live-tracker.onrender.com/api/reset", { method: "POST" });
+                fetch("/api/reset", { method: "POST" });
             }
         }
     </script>
