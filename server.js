@@ -1,56 +1,23 @@
 const express = require('express');
 const app = express();
-const http = require('http');
-const server = http.createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(server, { cors: { origin: "*" } });
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, { cors: { origin: "*" } });
+const path = require('path');
 const cors = require('cors');
-const axios = require('axios');
 
 app.use(cors());
 app.use(express.json());
 
-const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
-let userTeams = {};
+// সব স্ট্যাটিক ফাইল রুট ডিরেক্টরি থেকে লোড করবে
+app.use(express.static(path.join(__dirname, '.')));
 
-// গুগল শিট থেকে ডেটা সিঙ্ক করা
-async function syncGoogleSheet() {
-    try {
-        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
-        const response = await axios.get(url);
-        const jsonText = response.data.substring(response.data.indexOf('(') + 1, response.data.lastIndexOf(')'));
-        const data = JSON.parse(jsonText);
-        
-        let updatedTeams = {};
-        data.table.rows.forEach(row => {
-            const id = row.c[0]?.v ? row.c[0].v.toString().trim() : null;
-            if (id) {
-                updatedTeams[id] = { 
-                    username: row.c[1]?.v ? row.c[1].v.toString() : "Unknown", 
-                    team: row.c[2]?.v ? row.c[2].v.toString().trim() : "Team" 
-                };
-            }
-        });
-        userTeams = updatedTeams;
-        console.log("Sync Done. Workers Loaded:", Object.keys(userTeams).length);
-    } catch (e) { console.log("Sync Error:", e.message); }
-}
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-setInterval(syncGoogleSheet, 60000); // প্রতি ১ মিনিটে একবার সিঙ্ক হবে
-syncGoogleSheet();
-
-// আরডিপি থেকে হিট রিসিভ এবং প্রসেস করা
 app.post('/api/update-hits', (req, res) => {
-    const hits = req.body.hits || [];
-    const processedHits = hits.map(hit => {
-        const info = userTeams[hit.workerId] || { username: hit.workerId, team: 'Unknown' };
-        return { ...hit, username: info.username, team: info.team };
-    });
-    
-    // ড্যাশবোর্ডে ডেটা পাঠানো
-    io.emit('dashboard-update', { liveHits: processedHits });
+    io.emit('dashboard-update', { liveHits: req.body.hits });
     res.sendStatus(200);
 });
 
-const PORT = process.env.PORT || 10000;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+server.listen(10000, () => console.log('Server running on port 10000'));
