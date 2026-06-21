@@ -4,73 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MTurk Live Tracker // Cloud Dashboard</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
-        body { background-color: #080c14; color: #cbd5e1; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px; }
-        .logo { color: #38bdf8; font-weight: bold; font-size: 24px; letter-spacing: 1px; }
-        .live-indicator { background: #047857; color: #34d399; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-        
-        .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #1e293b; align-items: center; }
-        select, button { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
-        select:focus, button:hover { border-color: #38bdf8; background: #334155; }
-        .time-filters { display: flex; gap: 5px; background: #1e293b; padding: 4px; border-radius: 6px; }
-        .time-btn { background: transparent; border: none; padding: 6px 12px; font-size: 12px; }
-        .time-btn.active { background: #38bdf8; color: #080c14; border-radius: 4px; font-weight: bold; }
-        .btn-reset { background: #7f1d1d; color: #fca5a5; margin-left: auto; }
-        .btn-reset:hover { background: #b91c1c; }
-
-        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-box { background: #0f172a; border: 1px solid #1e293b; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
-        .stat-value { font-size: 24px; font-weight: bold; margin-top: 8px; color: #f8fafc; }
-        
-        .table-container { background: #0f172a; border-radius: 8px; border: 1px solid #1e293b; overflow-x: auto; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #0b0e14; color: #e2e8f0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: #111622; padding: 15px 25px; border-radius: 8px; margin-bottom: 20px; border-bottom: 3px solid #00a8ff; }
+        .logo { font-size: 24px; font-weight: bold; color: #00a8ff; }
+        .sync-badge { background: #00b894; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #111622; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #222f3e; }
+        .stat-card h3 { font-size: 12px; color: #8a99ad; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-card p { font-size: 22px; font-weight: bold; color: #fff; }
+        .stat-card p.highlight { color: #f1c40f; }
+        .table-container { background: #111622; border-radius: 8px; overflow: hidden; border: 1px solid #222f3e; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 14px 18px; font-size: 13px; border-bottom: 1px solid #1e293b; }
-        th { background: #1e293b; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
-        tr:hover { background: #141e33; }
-        
-        .status-active { color: #34d399; background: rgba(52, 211, 153, 0.1); padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; }
-        .status-submitted { color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 4px 8px; border-radius: 4px; font-size: 11px; }
-        .status-return { color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+        th { background: #1a233a; color: #8a99ad; padding: 12px 15px; font-size: 14px; text-transform: uppercase; }
+        td { padding: 12px 15px; border-bottom: 1px solid #1e272e; font-size: 14px; }
+        tr:hover { background: #161f33; }
+        .no-data { padding: 4px; text-align: center; color: #576574; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">MTURK PRO // <span class="live-indicator">● 24/7 CLOUD LIVE</span></div>
-        <div id="sync-time" style="font-size:13px; color:#64748b;">Last Cloud Sync: --:--:--</div>
+        <div class="logo">MTURK PRO // <span class="sync-badge">24/7 CLOUD LIVE</span></div>
+        <div id="sync-time" style="color: #8a99ad;">Last Cloud Sync: --:--:--</div>
     </div>
 
-    <div class="filter-bar">
-        <select id="team-filter" onchange="renderDashboard()"><option value="All">All Teams (গুগল শিট)</option></select>
-        <select id="worker-filter" onchange="renderDashboard()"><option value="All">All Workers</option></select>
-        <select id="status-filter" onchange="renderDashboard()">
-            <option value="All">All Status</option>
-            <option value="ACTIVE">Active (রানিং)</option>
-            <option value="SUBMITTED">Submitted (সাবমিট)</option>
-            <option value="M RETURN">Returned (রিটার্ন)</option>
-        </select>
-
-        <div class="time-filters">
-            <button class="time-btn active" id="btn-today" onclick="setTimeFilter('today')">Today</button>
-            <button class="time-btn" id="btn-7day" onclick="setTimeFilter('7day')">7 Days</button>
-            <button class="time-btn" id="btn-30day" onclick="setTimeFilter('30day')">30 Days</button>
-        </div>
-
-        <button class="btn-reset" onclick="resetCloudData()">Reset Database</button>
-    </div>
-
-    <div class="stats-container">
-        <div class="stat-box"><div class="stat-label">Active Now</div><div class="stat-value" id="active-count" style="color:#34d399">0</div></div>
-        <div class="stat-box"><div class="stat-label">Total Selected HITs</div><div class="stat-value" id="total-count">0</div></div>
-        <div class="stat-box"><div class="stat-label">Estimated Earned</div><div class="stat-value" id="earned-amount" style="color:#fbbf24">$0.00</div></div>
-        <div class="stat-box"><div class="stat-label">Active Workers</div><div class="stat-value" id="workers-count" style="color:#c084fc">0</div></div>
-        <div class="stat-box"><div class="stat-label">Active Teams</div><div class="stat-value" id="teams-count" style="color:#22d3ee">0</div></div>
-        <div class="stat-box"><div class="stat-label">Submitted</div><div class="stat-value" id="sub-count" style="color:#38bdf8">0</div></div>
-        <div class="stat-box"><div class="stat-label">Returned</div><div class="stat-value" id="ret-count" style="color:#f87171">0</div></div>
+    <div class="stats-grid">
+        <div class="stat-card"><h3>Active Now</h3><p id="stat-active">0</p></div>
+        <div class="stat-card"><h3>Estimated Earned</h3><p id="stat-earned" class="highlight">$0.00</p></div>
+        <div class="stat-card"><h3>Total Hits</h3><p id="stat-total">0</p></div>
     </div>
 
     <div class="table-container">
@@ -79,145 +43,59 @@
                 <tr>
                     <th>Team Name</th>
                     <th>Worker Name (ID)</th>
-                    <th>Requester</th>
                     <th>HIT Title</th>
                     <th>Reward</th>
-                    <th>Time Left / Date</th>
-                    <th>Status</th>
                 </tr>
             </thead>
-            <tbody id="hit-table-body">
-                <tr><td colspan="7" style="text-align: center; color: #64748b; padding: 30px;">Waiting for real-time cloud streams...</td></tr>
+            <tbody id="table-body">
+                <tr>
+                    <td colspan="4" class="no-data">Waiting for real-time cloud streams...</td>
+                </tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        // ক্লাউড সার্ভারে ডিপ্লয় করার পর localtunnel এর জায়গায় ক্লাউড লিংকটি এখানে বসবে
-        const CLOUD_BACKEND_URL = window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin;
-        const socket = io(CLOUD_BACKEND_URL); 
+        const socket = io("https://mturk-live-tracker.onrender.com");
         
-        let liveHitsData = [];
-        let historyLogData = [];
-        let currentTimeFilter = 'today';
-
-        socket.on('connect', () => console.log('Connected to permanent cloud server!'));
-
-        socket.on('init-data', (data) => {
-            liveHitsData = data.liveHits || [];
-            historyLogData = data.historyLog || [];
-            updateFilterDropdowns();
-            renderDashboard();
+        socket.on('connect', () => {
+            console.log("Connected to permanent cloud server!");
         });
 
         socket.on('dashboard-update', (data) => {
-            liveHitsData = data.liveHits || [];
-            historyLogData = data.historyLog || [];
-            updateFilterDropdowns();
-            renderDashboard();
-        });
+            document.getElementById('sync-time').innerText = "Last Cloud Sync: " + new Date().toLocaleTimeString();
+            
+            const tbody = document.getElementById('table-body');
+            const hits = data.liveHits || [];
+            
+            // স্ট্যাটাস বাটন ক্যালকুলেশন
+            document.getElementById('stat-active').innerText = hits.length;
+            document.getElementById('stat-total').innerText = hits.length;
+            
+            let totalEarned = 0;
 
-        function setTimeFilter(filter) {
-            currentTimeFilter = filter;
-            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`btn-${filter}`).classList.add('active');
-            renderDashboard();
-        }
+            if (hits.length > 0) {
+                tbody.innerHTML = hits.map(hit => {
+                    // রিওয়ার্ড থেকে ডলার সাইন সরিয়ে হিসেব করা
+                    const rewardNum = parseFloat(hit.reward.replace('$', '')) || 0;
+                    totalEarned += rewardNum;
 
-        function updateFilterDropdowns() {
-            const teamFilter = document.getElementById('team-filter');
-            const workerFilter = document.getElementById('worker-filter');
-            const currentT = teamFilter.value;
-            const currentW = workerFilter.value;
-
-            const teams = new Set(['All']);
-            const workers = new Set(['All']);
-
-            const targetData = currentTimeFilter === 'today' ? liveHitsData : historyLogData;
-
-            targetData.forEach(h => {
-                if(h.team) teams.add(h.team);
-                if(h.username) workers.add(h.username);
-            });
-
-            teamFilter.innerHTML = '';
-            teams.forEach(t => teamFilter.innerHTML += `<option value="${t}">${t}</option>`);
-            workerFilter.innerHTML = '';
-            workers.forEach(w => workerFilter.innerHTML += `<option value="${w}">${w}</option>`);
-
-            teamFilter.value = teams.has(currentT) ? currentT : 'All';
-            workerFilter.value = workers.has(currentW) ? currentW : 'All';
-        }
-
-        function renderDashboard() {
-            const tbody = document.getElementById('hit-table-body');
-            const selectedTeam = document.getElementById('team-filter').value;
-            const selectedWorker = document.getElementById('worker-filter').value;
-            const selectedStatus = document.getElementById('status-filter').value;
-
-            tbody.innerHTML = '';
-            let active = 0, total = 0, earned = 0, submitted = 0, returns = 0;
-            let uniqueWorkers = new Set();
-            let uniqueTeams = new Set();
-
-            // টাইম ফিল্টার সিলেকশন (আজ, ৭ দিন, ৩০ দিন)
-            let dataset = liveHitsData;
-            if (currentTimeFilter === '7day' || currentTimeFilter === '30day') {
-                const daysLimit = currentTimeFilter === '7day' ? 7 : 30;
-                const cutoffDate = new Date();
-                cutoffDate.setDate(cutoffDate.getDate() - daysLimit);
-                dataset = historyLogData.filter(h => new Date(h.updatedAt) >= cutoffDate);
-            }
-
-            dataset.forEach(hit => {
-                if (selectedTeam !== 'All' && hit.team !== selectedTeam) return;
-                if (selectedWorker !== 'All' && hit.username !== selectedWorker) return;
-                if (selectedStatus !== 'All' && hit.status !== selectedStatus) return;
-
-                total++;
-                if(hit.status === 'ACTIVE') active++;
-                if(hit.status === 'SUBMITTED') submitted++;
-                if(hit.status === 'M RETURN') returns++;
+                    return `
+                        <tr>
+                            <td style="color: #00a8ff; font-weight: bold;">${hit.team}</td>
+                            <td>${hit.username} <span style="color: #576574; font-size: 11px;">(${hit.workerId})</span></td>
+                            <td>${hit.title}</td>
+                            <td style="color: #2ecc71; font-weight: bold;">${hit.reward}</td>
+                        </tr>
+                    `;
+                }).join('');
                 
-                let rewardNum = parseFloat(hit.reward.replace(/[^0-9.-]+/g,"")) || 0;
-                earned += rewardNum;
-
-                if(hit.username) uniqueWorkers.add(hit.username);
-                if(hit.team) uniqueTeams.add(hit.team);
-
-                let statusClass = 'status-submitted';
-                if(hit.status === 'ACTIVE') statusClass = 'status-active';
-                if(hit.status === 'M RETURN') statusClass = 'status-return';
-
-                let displayTime = currentTimeFilter === 'today' ? hit.timeLeft : new Date(hit.updatedAt).toLocaleDateString();
-
-                let row = `<tr>
-                    <td style="color:#22d3ee; font-weight:600;">${hit.team}</td>
-                    <td>${hit.username} <span style="font-size:10px; color:#475569;">(${hit.workerId})</span></td>
-                    <td style="color: #38bdf8;">${hit.requester}</td>
-                    <td>${hit.title}</td>
-                    <td style="color: #fbbf24; font-weight:bold;">${hit.reward}</td>
-                    <td>${displayTime}</td>
-                    <td><span class="${statusClass}">${hit.status}</span></td>
-                </tr>`;
-                tbody.innerHTML += row;
-            });
-
-            document.getElementById('active-count').innerText = active;
-            document.getElementById('total-count').innerText = total;
-            document.getElementById('earned-amount').innerText = '$' + earned.toFixed(2);
-            document.getElementById('workers-count').innerText = uniqueWorkers.size;
-            document.getElementById('teams-count').innerText = uniqueTeams.size;
-            document.getElementById('sub-count').innerText = submitted;
-            document.getElementById('ret-count').innerText = returns;
-            document.getElementById('sync-time').innerText = 'Last Cloud Sync: ' + new Date().toLocaleTimeString();
-        }
-
-        function resetCloudData() {
-            if(confirm("Are you sure you want to completely clear cloud history?")) {
-                fetch(`${CLOUD_BACKEND_URL}/api/reset`, { method: 'POST' });
+                document.getElementById('stat-earned').innerText = "$" + totalEarned.toFixed(2);
+            } else {
+                tbody.innerHTML = `<tr><td colspan="4" class="no-data">No active hits right now.</td></tr>`;
+                document.getElementById('stat-earned').innerText = "$0.00";
             }
-        }
+        });
     </script>
 </body>
 </html>
