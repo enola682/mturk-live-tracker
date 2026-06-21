@@ -3,42 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTURK PRO // LIVE</title>
+    <title>MTurk HIT Tracker // LIVE</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #080b11; color: #94a3b8; padding: 15px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #06090e; color: #8a99ad; padding: 20px; }
         
-        .top-navbar { display: flex; justify-content: space-between; align-items: center; background: #0f141c; padding: 12px 20px; border-radius: 6px; margin-bottom: 15px; border-bottom: 2px solid #00b894; }
-        .logo-area { font-size: 18px; font-weight: bold; color: #3b82f6; }
-        .sync-msg { color: #64748b; font-size: 12px; font-family: monospace; }
+        /* ওরিজিনাল টপ বার */
+        .top-navbar { display: flex; justify-content: space-between; align-items: center; background: #0c1017; padding: 15px 24px; border-radius: 4px; margin-bottom: 20px; border-bottom: 1px solid #161b22; }
+        .logo-area { font-size: 16px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px; font-family: monospace; }
+        .logo-area span.green-tag { color: #00b894; font-size: 12px; font-weight: bold; }
+        .sync-msg { color: #52627a; font-size: 12px; font-family: monospace; }
 
-        .controls-row { display: flex; gap: 10px; background: #0f141c; padding: 12px; border-radius: 6px; margin-bottom: 15px; align-items: center; }
-        select { background: #151b26; border: 1px solid #1e293b; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; outline: none; cursor: pointer; }
-        .right-buttons { margin-left: auto; }
-        .btn-reset { background: #dc2626; color: #fff; border: none; padding: 6px 15px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        /* ফিল্টার এরিয়া */
+        .controls-row { display: flex; gap: 12px; background: #0c1017; padding: 14px 20px; border-radius: 4px; margin-bottom: 20px; align-items: center; border: 1px solid #161b22; }
+        select { background: #161b22; border: 1px solid #30363d; color: #c9d1d9; padding: 8px 16px; border-radius: 4px; font-size: 13px; outline: none; cursor: pointer; }
+        .btn-reset { background: #da3633; color: #fff; border: none; padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 4px; cursor: pointer; margin-left: auto; }
+        .btn-reset:hover { background: #f85149; }
 
-        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px; }
-        .stat-box { background: #0f141c; padding: 15px; border-radius: 6px; border: 1px solid #131924; text-align: center; }
-        .stat-box span { font-size: 10px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 6px; }
-        .stat-box h2 { font-size: 22px; color: #fff; font-weight: 700; }
+        /* ওরিজিনাল কাউন্টার গ্রিড */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 25px; }
+        .stat-box { background: #0c1017; padding: 20px; border-radius: 4px; text-align: left; border: 1px solid #161b22; border-bottom: 3px solid #30363d; }
+        .stat-box.active-box { border-bottom-color: #2ea043; }
+        .stat-box.total-box { border-bottom-color: #1f6feb; }
+        .stat-box.earned-box { border-bottom-color: #d29922; }
+        .stat-box span { font-size: 11px; text-transform: uppercase; color: #52627a; font-weight: bold; display: block; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .stat-box h2 { font-size: 26px; color: #f0f6fc; font-weight: 700; font-family: monospace; }
 
-        .table-container { background: #0f141c; border-radius: 6px; border: 1px solid #131924; overflow: hidden; }
-        .table-area { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #131924; color: #475569; padding: 12px 15px; font-size: 11px; text-transform: uppercase; }
-        td { padding: 12px 15px; border-bottom: 1px solid #131924; font-size: 12px; color: #cbd5e1; }
-        tr:hover { background: #151b26; }
+        /* ওরিজিনাল সুন্দর ও গোছানো টেবিল */
+        .table-container { background: #0c1017; border-radius: 4px; border: 1px solid #161b22; overflow-x: auto; }
+        .table-area { width: 100%; border-collapse: collapse; text-align: left; min-width: 1000px; }
+        th { background: #161b22; color: #8b949e; padding: 14px 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; border-bottom: 1px solid #30363d; }
+        td { padding: 14px 18px; border-bottom: 1px solid #21262d; font-size: 13px; color: #c9d1d9; }
+        tr:hover { background: #161b22; }
         
-        .status-badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
-        .st-active { background: rgba(0, 184, 148, 0.15); color: #00b894; border: 1px solid #00b894; }
-        .st-expired { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; }
+        /* ওরিজিনাল স্ট্যাটাস ব্যাজ স্টাইল */
+        .status-badge { font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 12px; text-transform: uppercase; display: inline-block; text-align: center; font-family: monospace; }
+        .st-active { background: rgba(46, 160, 67, 0.15); color: #2ea043; border: 1px solid #2ea043; }
+        .st-submitted { background: rgba(31, 111, 235, 0.15); color: #1f6feb; border: 1px solid #1f6feb; }
+        .st-expired { background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid #f85149; }
+        .st-return { background: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid #d29922; }
     </style>
 </head>
 <body>
 
     <div class="top-navbar">
-        <div class="logo-area">MTURK PRO // <span style="color:#00b894;">• CLOUD LIVE</span></div>
-        <div id="sync-clock" class="sync-msg">Last Cloud Sync: --:--:--</div>
+        <div class="logo-area">MTurk HIT Tracker // <span class="green-tag">● LIVE</span></div>
+        <div id="sync-clock" class="sync-msg">Synced: --:--:--</div>
     </div>
 
     <div class="controls-row">
@@ -46,35 +57,37 @@
         <select id="filter-status" onchange="applyFilters()">
             <option value="all">All Status</option>
             <option value="active">Active</option>
-            <option value="expired">Expired</option>
+            <option value="submitted">Submitted</option>
+            <option value="expired">Expired/Returned</option>
         </select>
-        <div class="right-buttons">
-            <button class="btn-reset" onclick="triggerReset()">Reset Database</button>
-        </div>
+        <button class="btn-reset" onclick="triggerReset()">Reset Database</button>
     </div>
 
     <div class="stats-row">
-        <div class="stat-box"><span>Active Now</span><h2 id="s-active">0</h2></div>
-        <div class="stat-box"><span>Total Selected Hits</span><h2 id="s-total">0</h2></div>
-        <div class="stat-box"><span>Estimated Earned</span><h2 id="s-earned">$0.00</h2></div>
-        <div class="stat-box"><span>Expired Tasks</span><h2 id="s-expired">0</h2></div>
+        <div class="stat-box active-box"><span>Active Now</span><h2 id="s-active">0</h2></div>
+        <div class="stat-box total-box"><span>Total Hits</span><h2 id="s-total">0</h2></div>
+        <div class="stat-box earned-box"><span>Earned ($)</span><h2 id="s-earned">$0.00</h2></div>
+        <div class="stat-box" style="border-bottom-color: #8957e5;"><span>Workers</span><h2 id="s-workers">0</h2></div>
+        <div class="stat-box" style="border-bottom-color: #bc8cff;"><span>Teams</span><h2 id="s-teams">0</h2></div>
+        <div class="stat-box" style="border-bottom-color: #58a6ff;"><span>Submitted</span><h2 id="s-submitted">0</h2></div>
+        <div class="stat-box" style="border-bottom-color: #f85149;"><span>Expired</span><h2 id="s-expired">0</h2></div>
     </div>
 
     <div class="table-container">
         <table class="table-area">
             <thead>
                 <tr>
-                    <th>Team Name</th>
-                    <th>Worker Name (ID)</th>
+                    <th>Worker ID</th>
+                    <th>Username</th>
                     <th>Requester</th>
-                    <th>Hit Title</th>
+                    <th>Title</th>
                     <th>Reward</th>
                     <th>Time Left</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="7" style="text-align:center; padding:30px;">Waiting for cloud data streams...</td></tr>
+                <tr><td colspan="7" style="text-align:center; padding:40px; color:#52627a;">No live stream records found. Waiting for cloud data...</td></tr>
             </tbody>
         </table>
     </div>
@@ -84,7 +97,7 @@
         let streamData = [];
 
         socket.on('dashboard-update', (data) => {
-            document.getElementById('sync-clock').innerText = "Last Cloud Sync: " + new Date().toLocaleTimeString();
+            document.getElementById('sync-clock').innerText = "Synced: " + new Date().toLocaleTimeString();
             streamData = data.liveHits || [];
             repopulateFilters();
             applyFilters();
@@ -94,7 +107,7 @@
             const tSel = document.getElementById('filter-team');
             const tVal = tSel.value;
             let teams = new Set(['all']);
-            streamData.forEach(h => { if(h.team) teams.add(h.team); });
+            streamData.forEach(h => { if(h.team && h.team !== 'Unknown') teams.add(h.team); });
             tSel.innerHTML = Array.from(teams).map(t => `<option value="${t}">${t==='all'?'All Teams':t}</option>`).join('');
             tSel.value = teams.has(tVal) ? tVal : 'all';
         }
@@ -105,48 +118,70 @@
 
             const filtered = streamData.filter(h => {
                 if (team !== 'all' && h.team !== team) return false;
-                if (status !== 'all' && h.status.toLowerCase() !== status) return false;
+                if (status !== 'all') {
+                    if (status === 'expired' && (h.status !== 'Expired' && h.status !== 'Returned')) return false;
+                    if (status !== 'expired' && h.status.toLowerCase() !== status) return false;
+                }
                 return true;
             });
 
-            // স্ট্যাটাস ক্যালকুলেশন
-            let active = 0, exp = 0, earned = 0;
+            // কাউন্টার ক্যালকুলেশন লজিক
+            let active = 0, sub = 0, exp = 0, earned = 0;
+            let wSet = new Set(), tSet = new Set();
+
             filtered.forEach(h => {
-                if(h.status.toLowerCase() === 'active') active++;
-                else exp++;
-                earned += parseFloat(h.reward.replace('$', '')) || 0;
+                const s = (h.status || 'Active').toLowerCase();
+                if(s === 'active') active++;
+                if(s === 'submitted') sub++;
+                if(s === 'expired' || s === 'returned' || s === 'return') exp++;
+                
+                if(s === 'submitted') {
+                    earned += parseFloat(h.reward.replace('$', '')) || 0;
+                }
+                if(h.username && h.username !== "N/A") wSet.add(h.username);
+                if(h.team && h.team !== 'Unknown') tSet.add(h.team);
             });
 
             document.getElementById('s-active').innerText = active;
             document.getElementById('s-total').innerText = filtered.length;
             document.getElementById('s-earned').innerText = "$" + earned.toFixed(2);
+            document.getElementById('s-workers').innerText = wSet.size;
+            document.getElementById('s-teams').innerText = tSet.size;
+            document.getElementById('s-submitted').innerText = sub;
             document.getElementById('s-expired').innerText = exp;
 
-            // টেবিল রেন্ডার
+            // টেবিল রো ডেটা জেনারেট করা
             const tbody = document.getElementById('table-body');
             if(filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px;">No records found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#52627a;">No live stream records found.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = filtered.map(h => {
-                const isExp = h.status.toLowerCase() === 'expired' || h.timeLeft === '0:00';
+                const st = (h.status || 'Active').toLowerCase();
+                let classMap = 'st-active';
+                if(st === 'submitted') classMap = 'st-submitted';
+                else if(st === 'expired') classMap = 'st-expired';
+                else if(st === 'returned' || st === 'return') classMap = 'st-return';
+
+                const isRedTime = h.timeLeft === '0:00' || h.timeLeft === '00:00' || st === 'expired';
+
                 return `
                     <tr>
-                        <td style="color:#3b82f6; font-weight:bold;">${h.team}</td>
-                        <td style="font-family:monospace;">${h.workerId}</td>
-                        <td>${h.requester}</td>
+                        <td style="font-family:monospace; color:#8b949e;">${h.workerId}</td>
+                        <td style="font-weight:600; color:#fff;">${h.username} ${h.team !== 'Unknown' ? `<span style="color:#58a6ff; font-size:11px; font-weight:normal;">[${h.team}]</span>` : ''}</td>
+                        <td style="color:#58a6ff;">${h.requester}</td>
                         <td>${h.title}</td>
-                        <td style="color:#00b894; font-weight:bold;">${h.reward}</td>
-                        <td style="${isExp ? 'color:#ef4444; font-weight:bold;' : ''}">${isExp ? '0:00' : h.timeLeft}</td>
-                        <td><span class="status-badge ${isExp ? 'st-expired' : 'st-active'}">${isExp ? 'EXPIRED' : 'ACTIVE'}</span></td>
+                        <td style="color:#56d364; font-weight:bold; font-family:monospace;">${h.reward}</td>
+                        <td style="font-family:monospace; ${isRedTime ? 'color:#f85149; font-weight:bold;' : ''}">${st==='expired'?'—':h.timeLeft}</td>
+                        <td><span class="status-badge ${classMap}">${h.status}</span></td>
                     </tr>
                 `;
             }).join('');
         }
 
         function triggerReset() {
-            if(confirm("Confirm reset dashboard database?")) {
+            if(confirm("Are you sure you want to reset the database?")) {
                 fetch("/api/reset", { method: "POST" });
             }
         }
