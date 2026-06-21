@@ -2,46 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MTurk Pro Tracker - LIVE</title>
+    <title>MTurk Pro Tracker</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background: #0b0e14; color: white; padding: 20px; }
-        .header { border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .hit-item { background: #1a1f29; padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 4px solid #00a8ff; }
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .hit-card { background: #1e293b; padding: 15px; margin: 10px 0; border-radius: 8px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>MTurk Pro Tracker // LIVE</h1>
-        <div id="sync-time">Last Cloud Sync: --:--:--</div>
+    <div class="container">
+        <h1>MTurk Pro Tracker</h1>
+        <div id="status">Connecting...</div>
+        <div id="hits"></div>
     </div>
-    <div id="hits-container">Waiting for real-time cloud streams...</div>
 
     <script>
-        // সকেট কানেকশন
         const socket = io("https://mturk-live-tracker.onrender.com");
         
         socket.on('connect', () => {
-            console.log("Connected to server!");
+            document.getElementById('status').innerText = "Status: Connected - Waiting for data...";
         });
 
-        // সার্ভার থেকে ডেটা আসলে এই ফাংশনটি চলবে
         socket.on('dashboard-update', (data) => {
-            console.log("Data Received:", data);
-            
-            // সময় আপডেট
-            document.getElementById('sync-time').innerText = "Last Cloud Sync: " + new Date().toLocaleTimeString();
-            
-            const container = document.getElementById('hits-container');
-            if (data.liveHits && data.liveHits.length > 0) {
-                container.innerHTML = data.liveHits.map(hit => `
-                    <div class="hit-item">
-                        <strong>Title:</strong> ${hit.title} | <strong>Reward:</strong> ${hit.reward}
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = "No active hits right now.";
-            }
+            document.getElementById('status').innerText = "Status: Receiving Data";
+            const container = document.getElementById('hits');
+            container.innerHTML = data.liveHits.map(h => `
+                <div class="hit-card">
+                    <strong>${h.title}</strong><br>
+                    Reward: ${h.reward}
+                </div>
+            `).join('');
         });
     </script>
 </body>
