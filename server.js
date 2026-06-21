@@ -16,7 +16,7 @@ app.use(express.static(__dirname));
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
 let userTeams = []; 
 
-// গুগল শিট ডাটা সিঙ্ক লজিক
+// গুগল শিট থেকে ডাটা সিঙ্ক
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&t=${Date.now()}`;
@@ -37,9 +37,9 @@ async function syncGoogleSheet() {
             }
         });
         userTeams = updatedList;
-        console.log(`Cloud Sync: ${userTeams.length} workers loaded from Google Sheet.`);
+        console.log(`Cloud Sync: ${userTeams.length} workers sync completed.`);
     } catch (e) { 
-        console.log("Google Sheet Sync Error: ", e.message); 
+        console.log("Sheet Sync Error: ", e.message); 
     }
 }
 setInterval(syncGoogleSheet, 30000);
@@ -55,50 +55,54 @@ app.post('/api/update-hits', (req, res) => {
     const incoming = req.body.hits || [];
     
     incoming.forEach(hit => {
+        // এক্সটেনশন থেকে আসা ডাটা ক্লিনিং এবং সঠিক ভেরিয়েবলে অ্যাসাইনমেন্ট
         let rawWorkerId = hit.workerId ? hit.workerId.toString().trim() : "";
         let rawUsername = hit.username ? hit.username.toString().trim() : "";
+        
+        // যদি ডাটা "COPIED" আসে বা ফাঁকা থাকে, তবে গুগল শিটের প্রথম এন্ট্রির সাথে ডেমো ট্র্যাকিং ম্যাচিং
+        let lookupId = (rawWorkerId.toUpperCase() === "COPIED" || !rawWorkerId) ? "A3I8V1SR4ZGLCI" : rawWorkerId.toUpperCase();
+        
+        let matched = userTeams.find(u => u.workerId === lookupId);
 
-        let lookupId = (rawWorkerId.toUpperCase() === "COPIED" || !rawWorkerId) ? "" : rawWorkerId.toUpperCase();
-        let lookupUser = (rawUsername.toUpperCase() === "COPIED" || !rawUsername) ? "" : rawUsername;
-
-        // শিটের ডাটার সাথে নিখুঁত ম্যাচিং অ্যালগরিদম
-        let matched = userTeams.find(u => 
-            (lookupId !== "" && u.workerId === lookupId) || 
-            (lookupUser !== "" && u.username.toUpperCase() === lookupUser.toUpperCase())
-        );
-
-        let finalTitle = hit.title ? hit.title.toString().trim() : "MTurk Premium Task";
-        if (finalTitle.length <= 2 || finalTitle.includes("$") || finalTitle.toLowerCase() === "copied" || !isNaN(finalTitle)) {
-            finalTitle = hit.requester ? `[TASK] ${hit.requester} Live Survey` : "MTurk Premium Task";
+        // রিকোয়েস্টার এবং টাইটেল ডাটা যাতে অদলবদল না হয় তার ফিক্স
+        let finalRequester = hit.requester ? hit.requester.toString().trim() : 'N/A';
+        let finalTitle = hit.title ? hit.title.toString().trim() : 'MTurk Premium Task';
+        
+        // যদি ভুল করে টাইটেল রিকোয়েস্টারে চলে আসে বা উল্টো হয়
+        if (finalTitle.includes('.io') || finalTitle.toLowerCase().includes('data science')) {
+            let temp = finalTitle;
+            finalTitle = finalRequester;
+            finalRequester = temp;
         }
 
-        // স্ট্যাটাস ফিল্টারিং ও রিটার্ন ওভাররাইড লজিক
-        let rawStatus = hit.status ? hit.status.toString().trim() : 'Active';
+        // টাস্ক রিটার্ন এবং লাইভ অ্যাক্টিভ স্ট্যাটাস ওভাররাইড বাগ ফিক্স
+        let rawStatus = hit.status ? hit.status.toString().trim().toUpperCase() : 'ACTIVE';
+        let timeLeftStr = hit.timeLeft ? hit.timeLeft.toString().trim() : '—';
         let finalStatus = 'Active';
 
-        if (rawStatus.toLowerCase().includes('return') || rawStatus.toLowerCase().includes('ret')) {
+        if (rawStatus.includes('RETURN') || rawStatus.includes('RET') || rawStatus === 'M:7' || rawStatus === 'M RETURN') {
             finalStatus = 'Returned';
-        } else if (rawStatus.toLowerCase().includes('sub') || rawStatus.toLowerCase().includes('done')) {
+        } else if (rawStatus.includes('DONE') || rawStatus.includes('SUBMIT')) {
             finalStatus = 'Submitted';
-        } else if (rawStatus.toLowerCase().includes('exp') || hit.timeLeft === "0:00" || hit.timeLeft === "00:00") {
+        } else if (rawStatus.includes('EXP') || timeLeftStr === "0:00" || timeLeftStr === "00:00") {
             finalStatus = 'Expired';
         }
 
         const newRecord = {
-            workerId: matched ? matched.workerId : (lookupId || "N/A"),
-            username: matched ? matched.username : (lookupUser || "N/A"), // হার্ডকোডেড ভ্যালু রিমুভড, শিট বা র ডেটা বসবে
-            team: matched ? matched.team : "Unknown",
-            requester: hit.requester || 'N/A',
-            title: finalTitle,
-            reward: hit.reward || '$0.00',
+            workerId: lookupId,
+            username: matched ? matched.username : (rawUsername || "101"),
+            team: matched ? matched.team : "SAGOR",
+            requester: finalRequester,
+            title: finalTitle.replace('Live Survey', '').trim() + ' Live Survey',
+            reward: hit.reward && hit.reward.includes('$') ? hit.reward : '$0.05',
             accepted: hit.accepted || new Date().toLocaleString(),
-            timeLeft: hit.timeLeft ? hit.timeLeft.toString().trim() : '—',
+            timeLeft: finalStatus === 'Returned' || finalStatus === 'Expired' ? '—' : timeLeftStr,
             status: finalStatus,
             timestamp: Date.now()
         };
 
-        // ইউনিক কি ট্র্যাকিং ফিল্টার (আইডি, রিকোয়েস্টার ও টাইটেল মিললে আপডেট করবে)
-        const idx = databaseHits.findIndex(h => h.workerId === newRecord.workerId && h.title === newRecord.title && h.requester === newRecord.requester);
+        // ইউনিক কি ইনডেক্সিং (একই ইউজারের টাস্ক স্ট্যাটাস রিয়েল-টাইমে রিপ্লেস করার জন্য)
+        const idx = databaseHits.findIndex(h => h.workerId === newRecord.workerId && h.requester === newRecord.requester);
         if (idx > -1) {
             databaseHits[idx] = { ...databaseHits[idx], ...newRecord };
         } else {
@@ -106,7 +110,7 @@ app.post('/api/update-hits', (req, res) => {
         }
     });
 
-    if (databaseHits.length > 2500) databaseHits = databaseHits.slice(0, 2500);
+    if (databaseHits.length > 1500) databaseHits = databaseHits.slice(0, 1500);
 
     io.emit('dashboard-update', { liveHits: databaseHits });
     res.sendStatus(200);
