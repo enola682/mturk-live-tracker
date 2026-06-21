@@ -13,7 +13,7 @@ app.use(express.json());
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
 let userTeams = {};
 
-// গুগল শিট থেকে নাম ও টিম সিঙ্ক করা
+// গুগল শিট থেকে ডেটা সিঙ্ক করা
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
@@ -32,13 +32,14 @@ async function syncGoogleSheet() {
             }
         });
         userTeams = updatedTeams;
-        console.log("Sync Done. Workers:", Object.keys(userTeams).length);
-    } catch (e) { console.log("Sync Error"); }
+        console.log("Sync Done. Workers Loaded:", Object.keys(userTeams).length);
+    } catch (e) { console.log("Sync Error:", e.message); }
 }
 
-setInterval(syncGoogleSheet, 30000);
+setInterval(syncGoogleSheet, 60000); // প্রতি ১ মিনিটে একবার সিঙ্ক হবে
 syncGoogleSheet();
 
+// আরডিপি থেকে হিট রিসিভ এবং প্রসেস করা
 app.post('/api/update-hits', (req, res) => {
     const hits = req.body.hits || [];
     const processedHits = hits.map(hit => {
@@ -46,9 +47,10 @@ app.post('/api/update-hits', (req, res) => {
         return { ...hit, username: info.username, team: info.team };
     });
     
+    // ড্যাশবোর্ডে ডেটা পাঠানো
     io.emit('dashboard-update', { liveHits: processedHits });
     res.sendStatus(200);
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
