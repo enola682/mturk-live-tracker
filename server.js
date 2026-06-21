@@ -14,8 +14,9 @@ app.use(express.static(path.join(__dirname, '/')));
 
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
 let userTeams = {};
+let globalHitsList = []; // সমস্ত হিট জমা রাখার জন্য গ্লোবাল অ্যারে (যাতে ডিলিট না হয়)
 
-// গুগল শিট ডেটা সিঙ্ক ফাংশন
+// গুগল শিট ডেটা সিঙ্ক
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
@@ -45,26 +46,46 @@ syncGoogleSheet();
 
 // আরডিপি থেকে হিট ডাটা রিসিভ
 app.post('/api/update-hits', (req, res) => {
-    const hits = req.body.hits || [];
+    const incomingHits = req.body.hits || [];
     
-    // গুগল শিটের আইডি থেকে নাম ও টিম ফিল্ড অ্যাড করা হচ্ছে
-    const processedHits = hits.map(hit => {
-        const info = userTeams[hit.workerId?.trim()] || { username: hit.workerId, team: 'Unknown' };
-        return { 
-            ...hit, 
+    incomingHits.forEach(newHit => {
+        const info = userTeams[newHit.workerId?.trim()] || { username: newHit.workerId, team: 'Unknown' };
+        
+        const processedHit = { 
+            ...newHit, 
             username: info.username, 
             team: info.team,
-            status: hit.status || 'Active',
-            requester: hit.requester || 'N/A',
-            timeLeft: hit.timeLeft || 'Just Now'
+            status: newHit.status || 'Active',
+            requester: newHit.requester || 'N/A',
+            timeLeft: newHit.timeLeft || 'Just Now',
+            timestamp: Date.now() // ইউনিক ট্র্যাকিংয়ের জন্য
         };
+
+        // আগের তালিকায় এই সেম হিট অলরেডি আছে কি না চেক করা (ডুপ্লিকেট আটকানো)
+        const existingIndex = globalHitsList.findIndex(h => h.workerId === processedHit.workerId && h.title === processedHit.title);
+        
+        if (existingIndex > -1) {
+            // থাকলে আপডেট করে দাও
+            globalHitsList[existingIndex] = processedHit;
+        } else {
+            // না থাকলে তালিকার একদম শুরুতে (Top) যোগ করো
+            globalHitsList.unshift(processedHit);
+        }
     });
+
+    // সর্বোচ্চ 999 টা হিট হিস্ট্রি ধরে রাখবে (সার্ভার স্লো হওয়া আটকাতে)
+    if (globalHitsList.length > 200) {
+        globalHitsList = globalHitsList.slice(0, 200);
+    }
     
-    io.emit('dashboard-update', { liveHits: processedHits });
+    // পুরো জমানো তালিকাটি ড্যাশবোর্ডে পাঠানো
+    io.emit('dashboard-update', { liveHits: globalHitsList });
     res.sendStatus(200);
 });
 
+// রিসেট ডাটাবেস বাটন চাপলে সব ক্লিয়ার হবে
 app.post('/api/reset', (req, res) => {
+    globalHitsList = [];
     io.emit('dashboard-update', { liveHits: [] });
     res.sendStatus(200);
 });
