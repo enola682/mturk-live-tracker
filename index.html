@@ -3,93 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTURK PRO // CLOUD LIVE</title>
+    <title>MTURK PRO // LIVE</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #080b11; color: #94a3b8; padding: 15px; }
         
         .top-navbar { display: flex; justify-content: space-between; align-items: center; background: #0f141c; padding: 12px 20px; border-radius: 6px; margin-bottom: 15px; border-bottom: 2px solid #00b894; }
-        .logo-area { font-size: 18px; font-weight: bold; color: #3b82f6; display: flex; align-items: center; gap: 8px; }
-        .live-dot { background: #00b894; padding: 2px 8px; border-radius: 4px; font-size: 10px; color: #fff; font-weight: bold; }
+        .logo-area { font-size: 18px; font-weight: bold; color: #3b82f6; }
         .sync-msg { color: #64748b; font-size: 12px; font-family: monospace; }
 
-        .controls-row { display: flex; gap: 10px; background: #0f141c; padding: 12px; border-radius: 6px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+        .controls-row { display: flex; gap: 10px; background: #0f141c; padding: 12px; border-radius: 6px; margin-bottom: 15px; align-items: center; }
         select { background: #151b26; border: 1px solid #1e293b; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; outline: none; cursor: pointer; }
-        .time-filters { display: flex; gap: 5px; }
-        .btn-time { background: #151b26; border: 1px solid #1e293b; color: #64748b; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; }
-        .btn-time.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
         .right-buttons { margin-left: auto; }
         .btn-reset { background: #dc2626; color: #fff; border: none; padding: 6px 15px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
 
         .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px; }
-        .stat-box { background: #0f141c; padding: 15px; border-radius: 6px; border: 1px solid #131924; text-align: center; position: relative; }
-        .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; border-radius: 0 0 6px 6px; }
-        
-        .box-active::after { background: #00b894; }
-        .box-total::after { background: #3b82f6; }
-        .box-earned::after { background: #eab308; }
-        .box-workers::after { background: #a855f7; }
-        .box-teams::after { background: #06b6d4; }
-        .box-sub::after { background: #f97316; }
-        .box-ret::after { background: #ef4444; }
-        
-        .stat-box span { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; display: block; margin-bottom: 6px; }
+        .stat-box { background: #0f141c; padding: 15px; border-radius: 6px; border: 1px solid #131924; text-align: center; }
+        .stat-box span { font-size: 10px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 6px; }
         .stat-box h2 { font-size: 22px; color: #fff; font-weight: 700; }
 
-        .accordion-wrapper { margin-bottom: 12px; background: #0f141c; border-radius: 6px; overflow: hidden; border: 1px solid #131924; }
-        .accordion-header { background: #131924; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .accordion-title { font-size: 14px; font-weight: bold; color: #00b894; display: flex; align-items: center; gap: 8px; }
-        .accordion-badges { display: flex; gap: 8px; align-items: center; }
-        .badge-ui { font-size: 11px; padding: 3px 10px; border-radius: 12px; color: #fff; font-weight: 600; }
-
+        .table-container { background: #0f141c; border-radius: 6px; border: 1px solid #131924; overflow: hidden; }
         .table-area { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #0b0f17; color: #475569; padding: 12px 15px; font-size: 11px; text-transform: uppercase; font-weight: 600; }
-        td { padding: 10px 15px; border-bottom: 1px solid #131924; font-size: 12px; color: #cbd5e1; }
-        tr:hover { background: #131924; }
+        th { background: #131924; color: #475569; padding: 12px 15px; font-size: 11px; text-transform: uppercase; }
+        td { padding: 12px 15px; border-bottom: 1px solid #131924; font-size: 12px; color: #cbd5e1; }
+        tr:hover { background: #151b26; }
         
-        .status-badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block; }
+        .status-badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
         .st-active { background: rgba(0, 184, 148, 0.15); color: #00b894; border: 1px solid #00b894; }
-        .st-submitted { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid #3b82f6; }
         .st-expired { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; }
     </style>
 </head>
 <body>
 
     <div class="top-navbar">
-        <div class="logo-area">MTURK PRO // <span class="live-dot">• CLOUD LIVE</span></div>
+        <div class="logo-area">MTURK PRO // <span style="color:#00b894;">• CLOUD LIVE</span></div>
         <div id="sync-clock" class="sync-msg">Last Cloud Sync: --:--:--</div>
     </div>
 
     <div class="controls-row">
         <select id="filter-team" onchange="applyFilters()"><option value="all">All Teams</option></select>
-        <select id="filter-worker" onchange="applyFilters()"><option value="all">All Workers</option></select>
         <select id="filter-status" onchange="applyFilters()">
             <option value="all">All Status</option>
             <option value="active">Active</option>
-            <option value="submitted">Submitted</option>
-            <option value="expired">Expired/Returned</option>
+            <option value="expired">Expired</option>
         </select>
-        <div class="time-filters">
-            <button class="btn-time active">Today</button>
-        </div>
         <div class="right-buttons">
             <button class="btn-reset" onclick="triggerReset()">Reset Database</button>
         </div>
     </div>
 
     <div class="stats-row">
-        <div class="stat-box box-active"><span>Active Now</span><h2 id="s-active">0</h2></div>
-        <div class="stat-box box-total"><span>Total Selected Hits</span><h2 id="s-total">0</h2></div>
-        <div class="stat-box box-earned"><span>Estimated Earned</span><h2 id="s-earned">$0.00</h2></div>
-        <div class="stat-box box-workers"><span>Active Workers</span><h2 id="s-workers">0</h2></div>
-        <div class="stat-box box-teams"><span>Active Teams</span><h2 id="s-teams">0</h2></div>
-        <div class="stat-box box-sub"><span>Submitted</span><h2 id="s-submitted">0</h2></div>
-        <div class="stat-box box-ret"><span>Returned/Expired</span><h2 id="s-returned">0</h2></div>
+        <div class="stat-box"><span>Active Now</span><h2 id="s-active">0</h2></div>
+        <div class="stat-box"><span>Total Selected Hits</span><h2 id="s-total">0</h2></div>
+        <div class="stat-box"><span>Estimated Earned</span><h2 id="s-earned">$0.00</h2></div>
+        <div class="stat-box"><span>Expired Tasks</span><h2 id="s-expired">0</h2></div>
     </div>
 
-    <div id="accordion-container">
-        <div style="text-align:center; padding:40px; background:#0f141c; border-radius:6px;">Waiting for cloud data streams...</div>
+    <div class="table-container">
+        <table class="table-area">
+            <thead>
+                <tr>
+                    <th>Team Name</th>
+                    <th>Worker Name (ID)</th>
+                    <th>Requester</th>
+                    <th>Hit Title</th>
+                    <th>Reward</th>
+                    <th>Time Left</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="7" style="text-align:center; padding:30px;">Waiting for cloud data streams...</td></tr>
+            </tbody>
+        </table>
     </div>
 
     <script>
@@ -105,138 +92,57 @@
 
         function repopulateFilters() {
             const tSel = document.getElementById('filter-team');
-            const wSel = document.getElementById('filter-worker');
-            const tVal = tSel.value, wVal = wSel.value;
-
-            let teams = new Set(['all']), workers = new Set(['all']);
-            streamData.forEach(h => {
-                if(h.team && h.team !== 'Unknown Team') teams.add(h.team);
-                if(h.username) workers.add(h.username);
-            });
-
+            const tVal = tSel.value;
+            let teams = new Set(['all']);
+            streamData.forEach(h => { if(h.team) teams.add(h.team); });
             tSel.innerHTML = Array.from(teams).map(t => `<option value="${t}">${t==='all'?'All Teams':t}</option>`).join('');
-            wSel.innerHTML = Array.from(workers).map(w => `<option value="${w}">${w==='all'?'All Workers':w}</option>`).join('');
             tSel.value = teams.has(tVal) ? tVal : 'all';
-            wSel.value = workers.has(wVal) ? wVal : 'all';
         }
 
         function applyFilters() {
             const team = document.getElementById('filter-team').value;
-            const worker = document.getElementById('filter-worker').value;
             const status = document.getElementById('filter-status').value;
 
             const filtered = streamData.filter(h => {
                 if (team !== 'all' && h.team !== team) return false;
-                if (worker !== 'all' && h.username !== worker) return false;
-                if (status !== 'all') {
-                    if (status === 'expired' && h.status !== 'Expired') return false;
-                    if (status !== 'expired' && h.status.toLowerCase() !== status) return false;
-                }
+                if (status !== 'all' && h.status.toLowerCase() !== status) return false;
                 return true;
             });
 
-            calculateStats(filtered);
-            renderWorkerAccordion(filtered);
-        }
-
-        function calculateStats(hits) {
-            let active = 0, sub = 0, ret = 0, earned = 0;
-            let wSet = new Set(), tSet = new Set();
-
-            hits.forEach(h => {
-                const s = (h.status || 'Active').toLowerCase();
-                if(s === 'active') active++;
-                if(s === 'submitted') sub++;
-                if(s === 'expired' || s === 'returned') ret++;
-                
-                if(s === 'submitted') {
-                    earned += parseFloat(h.reward?.toString().replace('$', '')) || 0;
-                }
-                if(h.username) wSet.add(h.username);
-                if(h.team && h.team !== 'Unknown Team') tSet.add(h.team);
+            // স্ট্যাটাস ক্যালকুলেশন
+            let active = 0, exp = 0, earned = 0;
+            filtered.forEach(h => {
+                if(h.status.toLowerCase() === 'active') active++;
+                else exp++;
+                earned += parseFloat(h.reward.replace('$', '')) || 0;
             });
 
             document.getElementById('s-active').innerText = active;
-            document.getElementById('s-total').innerText = hits.length;
+            document.getElementById('s-total').innerText = filtered.length;
             document.getElementById('s-earned').innerText = "$" + earned.toFixed(2);
-            document.getElementById('s-workers').innerText = wSet.size;
-            document.getElementById('s-teams').innerText = tSet.size;
-            document.getElementById('s-submitted').innerText = sub;
-            document.getElementById('s-returned').innerText = ret;
-        }
+            document.getElementById('s-expired').innerText = exp;
 
-        function renderWorkerAccordion(hits) {
-            const container = document.getElementById('accordion-container');
-            container.innerHTML = "";
-
-            if(hits.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:30px; background:#0f141c; border-radius:6px;">No records found.</div>`;
+            // টেবিল রেন্ডার
+            const tbody = document.getElementById('table-body');
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px;">No records found.</td></tr>`;
                 return;
             }
 
-            let grouped = {};
-            hits.forEach(h => {
-                const groupKey = h.team !== "Unknown Team" ? h.team : "UNASSIGNED TEAM";
-                if(!grouped[groupKey]) grouped[groupKey] = [];
-                grouped[groupKey].push(h);
-            });
-
-            Object.keys(grouped).forEach(teamKey => {
-                const teamHits = grouped[teamKey];
-                
-                let activeCount = teamHits.filter(h => (h.status||'').toLowerCase() === 'active').length;
-                let subCount = teamHits.filter(h => (h.status||'').toLowerCase() === 'submitted').length;
-                let retCount = teamHits.filter(h => (h.status||'').toLowerCase() === 'expired').length;
-                let totalCash = teamHits.reduce((acc, h) => h.status==='Submitted' ? acc + (parseFloat(h.reward?.toString().replace('$', '')) || 0) : acc, 0);
-
-                const wrapper = document.createElement('div');
-                wrapper.className = "accordion-wrapper";
-
-                wrapper.innerHTML = `
-                    <div class="accordion-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'table' : 'none'">
-                        <div class="accordion-title">🚀 TEAM: ${teamKey.toUpperCase()} <span style="color:#475569; font-size:11px; font-weight:normal;">(${teamHits.length} HITS)</span></div>
-                        <div class="accordion-badges">
-                            <span class="badge-ui" style="background:#00b894;">🟢 ${activeCount} Active</span>
-                            <span class="badge-ui" style="background:#3b82f6;">✓ ${subCount} Done</span>
-                            <span class="badge-ui" style="background:#ef4444;">⚠ ${retCount} Expired</span>
-                            <span class="badge-ui" style="background:rgba(234,179,8,0.2); color:#eab308; border:1px solid #eab308;">$${totalCash.toFixed(2)}</span>
-                        </div>
-                    </div>
-                    <table class="table-area">
-                        <thead>
-                            <tr>
-                                <th>Team Name</th>
-                                <th>Username (ID)</th>
-                                <th>Worker ID (Google Sheet)</th>
-                                <th>Requester</th>
-                                <th>Hit Title</th>
-                                <th>Reward</th>
-                                <th>Time Left</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${teamHits.map(h => {
-                                const st = (h.status || 'Active').toLowerCase();
-                                const classMap = st==='submitted'?'st-submitted':st==='expired'?'st-expired':'st-active';
-                                return `
-                                    <tr>
-                                        <td style="color:#3b82f6; font-weight:600;">${h.team}</td>
-                                        <td style="color:#fff; font-weight:bold;">${h.username}</td>
-                                        <td style="font-family:monospace; font-size:11px; color:#64748b;">${h.workerId}</td>
-                                        <td>${h.requester}</td>
-                                        <td>${h.title}</td>
-                                        <td style="color:#00b894; font-weight:bold;">${h.reward}</td>
-                                        <td style="${h.timeLeft==='0:00'||h.timeLeft==='00:00'||h.status==='Expired'?'color:#ef4444; font-weight:bold;':''}">${h.status==='Expired'?'0:00':h.timeLeft}</td>
-                                        <td><span class="status-badge ${classMap}">${h.status}</span></td>
-                                    </tr>
-                                ];
-                            }).join('')}
-                        </tbody>
-                    </table>
+            tbody.innerHTML = filtered.map(h => {
+                const isExp = h.status.toLowerCase() === 'expired' || h.timeLeft === '0:00';
+                return `
+                    <tr>
+                        <td style="color:#3b82f6; font-weight:bold;">${h.team}</td>
+                        <td style="font-family:monospace;">${h.workerId}</td>
+                        <td>${h.requester}</td>
+                        <td>${h.title}</td>
+                        <td style="color:#00b894; font-weight:bold;">${h.reward}</td>
+                        <td style="${isExp ? 'color:#ef4444; font-weight:bold;' : ''}">${isExp ? '0:00' : h.timeLeft}</td>
+                        <td><span class="status-badge ${isExp ? 'st-expired' : 'st-active'}">${isExp ? 'EXPIRED' : 'ACTIVE'}</span></td>
+                    </tr>
                 `;
-                container.appendChild(wrapper);
-            });
+            }).join('');
         }
 
         function triggerReset() {
