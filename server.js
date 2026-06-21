@@ -14,10 +14,9 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
-let userTeams = {};
-let databaseHits = []; 
+let userTeams = []; // অবজেক্টের বদলে অ্যারে দিয়ে নিখুঁত ম্যাচিং করা হবে
 
-// গুগল শিট ডেটা অটো সিঙ্ক
+// গুগল শিট অটো সিঙ্ক লজিক
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&t=${Date.now()}`;
@@ -25,66 +24,79 @@ async function syncGoogleSheet() {
         const jsonText = response.data.substring(response.data.indexOf('(') + 1, response.data.lastIndexOf(')'));
         const data = JSON.parse(jsonText);
         
-        let updatedTeams = {};
+        let updatedList = [];
         data.table.rows.forEach(row => {
-            if (row.c && row.c[0]) {
-                const id = row.c[0].v ? row.c[0].v.toString().trim().toUpperCase() : null;
-                const username = row.c[1] && row.c[1].v ? row.c[1].v.toString().trim() : "Unknown";
-                const team = row.c[2] && row.c[2].v ? row.c[2].v.toString().trim() : "Unknown Team";
+            if (row.c) {
+                const wId = row.c[0] && row.c[0].v ? row.c[0].v.toString().trim().toUpperCase() : "";
+                const uName = row.c[1] && row.c[1].v ? row.c[1].v.toString().trim().toUpperCase() : "";
+                const tName = row.c[2] && row.c[2].v ? row.c[2].v.toString().trim() : "Unknown Team";
                 
-                if (id) {
-                    updatedTeams[id] = { username: username, team: team };
+                if (wId || uName) {
+                    updatedList.push({ workerId: wId, username: uName, team: tName });
                 }
             }
         });
-        userTeams = updatedTeams;
-        console.log("Google Sheet Connected. Total Loaded: ", Object.keys(userTeams).length);
+        userTeams = updatedList;
+        console.log("Sheet Sync Completed. Total Rows Loaded: ", userTeams.length);
     } catch (e) { 
-        console.log("Google Sheet Sync Error: ", e.message); 
+        console.log("Sheet Sync Error: ", e.message); 
     }
 }
-
 setInterval(syncGoogleSheet, 30000);
 syncGoogleSheet();
 
-// রুট রাউট ফিক্স (Cannot GET / এরর বন্ধ)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// লাইভ ডেটা রিসিভার এপিআই
+let databaseHits = []; 
+
 app.post('/api/update-hits', (req, res) => {
     const incoming = req.body.hits || [];
     
     incoming.forEach(hit => {
-        // যদি workerId একদম ফাঁকা থাকে তবেই শুধু বাদ যাবে, নতুবা ডাটা প্রসেস হবে
-        if (!hit.workerId || hit.workerId.toString().trim() === "") return;
+        let extWorkerId = hit.workerId ? hit.workerId.toString().trim() : "";
+        let extUsername = hit.username ? hit.username.toString().trim() : "";
         
-        const rawId = hit.workerId.toString().trim();
-        const wIdClean = rawId.toUpperCase();
-        
-        // শিটে আইডি না মিললে এক্সটেনশনের পাঠানো ইউজারনেম অথবা আইডটাই নাম হিসেবে ব্যাকআপ থাকবে
-        const info = userTeams[wIdClean] || { 
-            username: hit.username || rawId, 
-            team: "Unknown" 
-        };
-        
+        // ১. আইডি ও টিম নেম ট্র্যাকিং ফিক্স (শিটের সাথে ম্যাচিং)
+        let matchedUser = userTeams.find(u => 
+            (extWorkerId !== "" && extWorkerId.toUpperCase() !== "COPIED" && u.workerId === extWorkerId.toUpperCase()) ||
+            (extUsername !== "" && u.username === extUsername.toUpperCase())
+        );
+
+        let finalWorkerId = matchedUser ? matchedUser.workerId : (extWorkerId.toUpperCase() === "COPIED" ? extUsername : extWorkerId);
+        let finalUsername = matchedUser ? matchedUser.username : extUsername;
+        let finalTeamName = matchedUser ? matchedUser.team : "Unknown Team";
+
+        // ২. ফেক হিট টাইটেল ফিক্স
+        let finalTitle = hit.title ? hit.title.toString().trim() : "No Title";
+        // যদি টাইটেল রিওয়ার্ডের মতো দেখায় বা শুধু সংখ্যা হয়, তবে আসল রিকুয়েস্টার নেম সেট হবে
+        if (finalTitle.length <= 2 || finalTitle.includes("$") || finalTitle.toLowerCase() === "copied" || !isNaN(finalTitle)) {
+            finalTitle = hit.requester ? `[TASK] ${hit.requester} Live Survey` : "MTurk Premium HIT Task";
+        }
+
+        // ৩. টাইম শেষ হলে অটো-স্ট্যাটাস এক্সপায়ার্ড/রিটার্ন ফিক্স
+        let finalStatus = hit.status || 'Active';
+        const timeLeftStr = hit.timeLeft ? hit.timeLeft.toString().trim() : "";
+        if (timeLeftStr === "0:00" || timeLeftStr === "00:00" || timeLeftStr === "-" || timeLeftStr === "") {
+            finalStatus = 'Expired';
+        }
+
         const newRecord = {
-            workerId: rawId,
-            username: hit.username || info.username, 
-            workerName: info.username, 
-            team: info.team,
+            workerId: finalWorkerId || "N/A",
+            username: finalUsername || "N/A", 
+            team: finalTeamName,
             requester: hit.requester || 'N/A',
-            title: hit.title || 'No Title',
+            title: finalTitle,
             reward: hit.reward || '$0.00',
             accepted: hit.accepted || new Date().toLocaleString(),
-            timeLeft: hit.timeLeft || '-',
-            status: hit.status || 'Active',
+            timeLeft: timeLeftStr || '-',
+            status: finalStatus,
             timestamp: Date.now()
         };
 
-        // ইউনিক ডেটা হ্যান্ডলিং (আইডি এবং টাইটেল দিয়ে ইউনিক ফিল্টার)
-        const idx = databaseHits.findIndex(h => h.workerId.toUpperCase() === wIdClean && h.title === hit.title);
+        // ইউনিক ডেটা হ্যান্ডলিং
+        const idx = databaseHits.findIndex(h => h.workerId === newRecord.workerId && h.title === newRecord.title);
         if (idx > -1) {
             databaseHits[idx] = { ...databaseHits[idx], ...newRecord };
         } else {
@@ -94,12 +106,10 @@ app.post('/api/update-hits', (req, res) => {
 
     if (databaseHits.length > 2500) databaseHits = databaseHits.slice(0, 2500);
 
-    // সকেটে রিয়েল-টাইম ব্রডকাস্ট
     io.emit('dashboard-update', { liveHits: databaseHits });
     res.sendStatus(200);
 });
 
-// ডাটাবেজ রিসেট এপিআই
 app.post('/api/reset', (req, res) => {
     databaseHits = [];
     io.emit('dashboard-update', { liveHits: [] });
@@ -107,4 +117,4 @@ app.post('/api/reset', (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-http.listen(PORT, '0.0.0.0', () => console.log(`Server Running on Port ${PORT}`));
+http.listen(PORT, '0.0.0.0', () => console.log(`Server is running...`));
