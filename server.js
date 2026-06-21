@@ -14,9 +14,19 @@ app.use(express.static(path.join(__dirname, '/')));
 
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
 let userTeams = {};
-let globalHitsList = []; // সমস্ত হিট জমা রাখার জন্য গ্লোবাল অ্যারে (যাতে ডিলিট না হয়)
 
-// গুগল শিট ডেটা সিঙ্ক
+// স্ট্যাটাস ভিত্তিক লাইফটাইম কাউন্টার অবজেক্ট
+let globalStats = {
+    totalSelected: 0,
+    estimatedEarned: 0,
+    submittedCount: 0,
+    returnedCount: 0
+};
+
+// লাইভ টেবিলের জন্য শুধুমাত্র Active হিটগুলো রাখার অ্যারে
+let liveActiveHits = [];
+
+// গুগল শিট ডেটা সিঙ্ক ফাংশন (উন্নত ফরম্যাট ফিক্স)
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
@@ -26,16 +36,17 @@ async function syncGoogleSheet() {
         
         let updatedTeams = {};
         data.table.rows.forEach(row => {
-            const id = row.c[0]?.v ? row.c[0].v.toString().trim() : null;
+            // কলাম ০ = Worker ID, কলাম ১ = Worker Name, কলাম ২ = Team Name
+            const id = row.c[0] && row.c[0].v ? row.c[0].v.toString().trim() : null;
+            const name = row.c[1] && row.c[1].v ? row.c[1].v.toString().trim() : "Unknown";
+            const team = row.c[2] && row.c[2].v ? row.c[2].v.toString().trim() : "Team";
+            
             if (id) {
-                updatedTeams[id] = { 
-                    username: row.c[1]?.v ? row.c[1].v.toString().trim() : "Unknown", 
-                    team: row.c[2]?.v ? row.c[2].v.toString().trim() : "Team" 
-                };
+                updatedTeams[id] = { username: name, team: team };
             }
         });
         userTeams = updatedTeams;
-        console.log("Sync Done. Workers:", Object.keys(userTeams).length);
+        console.log("Google Sheet Synced. Total Workers Loaded:", Object.keys(userTeams).length);
     } catch (e) { 
         console.log("Sheet Sync Error:", e.message); 
     }
@@ -48,45 +59,68 @@ syncGoogleSheet();
 app.post('/api/update-hits', (req, res) => {
     const incomingHits = req.body.hits || [];
     
-    incomingHits.forEach(newHit => {
-        const info = userTeams[newHit.workerId?.trim()] || { username: newHit.workerId, team: 'Unknown' };
+    incomingHits.forEach(hit => {
+        // গুগল শিট থেকে আইডি ধরে ইউজার এবং টিম ম্যাচিং (Case Insensitive & Trim ফিক্স)
+        const workerIdClean = hit.workerId ? hit.workerId.toString().trim() : "";
+        const info = userTeams[workerIdClean] || { username: workerIdClean || "Unknown", team: "Unknown" };
         
+        const currentStatus = (hit.status || 'Active').toLowerCase();
+        const rewardNum = parseFloat(hit.reward ? hit.reward.toString().replace('$', '') : '0') || 0;
+
         const processedHit = { 
-            ...newHit, 
+            ...hit, 
             username: info.username, 
             team: info.team,
-            status: newHit.status || 'Active',
-            requester: newHit.requester || 'N/A',
-            timeLeft: newHit.timeLeft || 'Just Now',
-            timestamp: Date.now() // ইউনিক ট্র্যাকিংয়ের জন্য
+            status: hit.status || 'Active',
+            requester: hit.requester || 'N/A',
+            timeLeft: hit.timeLeft || 'Just Now'
         };
 
-        // আগের তালিকায় এই সেম হিট অলরেডি আছে কি না চেক করা (ডুপ্লিকেট আটকানো)
-        const existingIndex = globalHitsList.findIndex(h => h.workerId === processedHit.workerId && h.title === processedHit.title);
-        
-        if (existingIndex > -1) {
-            // থাকলে আপডেট করে দাও
-            globalHitsList[existingIndex] = processedHit;
-        } else {
-            // না থাকলে তালিকার একদম শুরুতে (Top) যোগ করো
-            globalHitsList.unshift(processedHit);
+        // ১. যদি হিটটি সাবমিট বা রিটার্ন হয়, তবে মেইন কাউন্টার বক্স বাড়িয়ে দেব
+        if (currentStatus === 'submitted') {
+            globalStats.submittedCount++;
+            globalStats.estimatedEarned += rewardNum;
+            globalStats.totalSelected++;
+            // লাইভ লিস্টে থাকলে তা সরিয়ে দেব
+            liveActiveHits = liveActiveHits.filter(h => !(h.workerId === processedHit.workerId && h.title === processedHit.title));
+        } 
+        else if (currentStatus === 'returned') {
+            globalStats.returnedCount++;
+            globalStats.totalSelected++;
+            // লাইভ লিস্টে থাকলে তা সরিয়ে দেব
+            liveActiveHits = liveActiveHits.filter(h => !(h.workerId === processedHit.workerId && h.title === processedHit.title));
+        } 
+        else {
+            // ২. যদি হিটটি Active হয়, তবে লাইভ তালিকায় যোগ বা আপডেট করব
+            const existingIndex = liveActiveHits.findIndex(h => h.workerId === processedHit.workerId && h.title === processedHit.title);
+            if (existingIndex > -1) {
+                liveActiveHits[existingIndex] = processedHit;
+            } else {
+                liveActiveHits.unshift(processedHit);
+                globalStats.totalSelected++;
+            }
         }
     });
 
-    // সর্বোচ্চ 999 টা হিট হিস্ট্রি ধরে রাখবে (সার্ভার স্লো হওয়া আটকাতে)
-    if (globalHitsList.length > 200) {
-        globalHitsList = globalHitsList.slice(0, 200);
+    // সর্বোচ্চ ১০০ টি একটিভ হিট মেমোরিতে রাখবে
+    if (liveActiveHits.length > 100) {
+        liveActiveHits = liveActiveHits.slice(0, 100);
     }
     
-    // পুরো জমানো তালিকাটি ড্যাশবোর্ডে পাঠানো
-    io.emit('dashboard-update', { liveHits: globalHitsList });
+    // ড্যাশবোর্ডে লাইভ একটিভ হিট এবং স্ট্যাটাস কাউন্ট পাঠানো
+    io.emit('dashboard-update', { 
+        liveHits: liveActiveHits,
+        stats: globalStats
+    });
+    
     res.sendStatus(200);
 });
 
-// রিসেট ডাটাবেস বাটন চাপলে সব ক্লিয়ার হবে
+// ডেটাবেস রিসেট
 app.post('/api/reset', (req, res) => {
-    globalHitsList = [];
-    io.emit('dashboard-update', { liveHits: [] });
+    liveActiveHits = [];
+    globalStats = { totalSelected: 0, estimatedEarned: 0, submittedCount: 0, returnedCount: 0 };
+    io.emit('dashboard-update', { liveHits: [], stats: globalStats });
     res.sendStatus(200);
 });
 
