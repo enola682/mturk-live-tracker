@@ -14,9 +14,8 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
-let userTeams = []; // অবজেক্টের বদলে অ্যারে দিয়ে নিখুঁত ম্যাচিং করা হবে
+let userTeams = []; 
 
-// গুগল শিট অটো সিঙ্ক লজিক
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&t=${Date.now()}`;
@@ -37,7 +36,7 @@ async function syncGoogleSheet() {
             }
         });
         userTeams = updatedList;
-        console.log("Sheet Sync Completed. Total Rows Loaded: ", userTeams.length);
+        console.log("Sheet Sync completed.");
     } catch (e) { 
         console.log("Sheet Sync Error: ", e.message); 
     }
@@ -55,37 +54,32 @@ app.post('/api/update-hits', (req, res) => {
     const incoming = req.body.hits || [];
     
     incoming.forEach(hit => {
-        let extWorkerId = hit.workerId ? hit.workerId.toString().trim() : "";
-        let extUsername = hit.username ? hit.username.toString().trim() : "";
-        
-        // ১. আইডি ও টিম নেম ট্র্যাকিং ফিক্স (শিটের সাথে ম্যাচিং)
-        let matchedUser = userTeams.find(u => 
-            (extWorkerId !== "" && extWorkerId.toUpperCase() !== "COPIED" && u.workerId === extWorkerId.toUpperCase()) ||
-            (extUsername !== "" && u.username === extUsername.toUpperCase())
-        );
+        let rawId = hit.workerId ? hit.workerId.toString().trim() : "COPIED";
+        let rawUser = hit.username ? hit.username.toString().trim() : "";
 
-        let finalWorkerId = matchedUser ? matchedUser.workerId : (extWorkerId.toUpperCase() === "COPIED" ? extUsername : extWorkerId);
-        let finalUsername = matchedUser ? matchedUser.username : extUsername;
-        let finalTeamName = matchedUser ? matchedUser.team : "Unknown Team";
-
-        // ২. ফেক হিট টাইটেল ফিক্স
+        // ১. ফেক টাইটেল রিমুভাল (যদি টাইটেল ছোট সংখ্যা বা রিওয়ার্ডের সমান হয়)
         let finalTitle = hit.title ? hit.title.toString().trim() : "No Title";
-        // যদি টাইটেল রিওয়ার্ডের মতো দেখায় বা শুধু সংখ্যা হয়, তবে আসল রিকুয়েস্টার নেম সেট হবে
         if (finalTitle.length <= 2 || finalTitle.includes("$") || finalTitle.toLowerCase() === "copied" || !isNaN(finalTitle)) {
-            finalTitle = hit.requester ? `[TASK] ${hit.requester} Live Survey` : "MTurk Premium HIT Task";
+            finalTitle = hit.requester ? `${hit.requester} - Live Survey Task` : "MTurk Premium HIT";
         }
 
-        // ৩. টাইম শেষ হলে অটো-স্ট্যাটাস এক্সপায়ার্ড/রিটার্ন ফিক্স
+        // ২. টাইম শেষ হলে অটো-স্ট্যাটাস EXPIRED করা
         let finalStatus = hit.status || 'Active';
         const timeLeftStr = hit.timeLeft ? hit.timeLeft.toString().trim() : "";
         if (timeLeftStr === "0:00" || timeLeftStr === "00:00" || timeLeftStr === "-" || timeLeftStr === "") {
             finalStatus = 'Expired';
         }
 
+        // ৩. শিটের সাথে ম্যাচিং ট্রাই (ব্যাকআপ লজিক)
+        let matched = userTeams.find(u => 
+            (rawId !== "COPIED" && u.workerId === rawId.toUpperCase()) || 
+            (rawUser !== "" && u.username === rawUser.toUpperCase())
+        );
+
         const newRecord = {
-            workerId: finalWorkerId || "N/A",
-            username: finalUsername || "N/A", 
-            team: finalTeamName,
+            workerId: matched ? matched.workerId : rawId,
+            username: matched ? matched.username : (rawUser || "COPIED"),
+            team: matched ? matched.team : "Unknown",
             requester: hit.requester || 'N/A',
             title: finalTitle,
             reward: hit.reward || '$0.00',
@@ -95,8 +89,8 @@ app.post('/api/update-hits', (req, res) => {
             timestamp: Date.now()
         };
 
-        // ইউনিক ডেটা হ্যান্ডলিং
-        const idx = databaseHits.findIndex(h => h.workerId === newRecord.workerId && h.title === newRecord.title);
+        // ইউনিক এন্ট্রি ট্র্যাকিং (যাতে ডুপ্লিকেট না হয়)
+        const idx = databaseHits.findIndex(h => h.title === newRecord.title && h.requester === newRecord.requester);
         if (idx > -1) {
             databaseHits[idx] = { ...databaseHits[idx], ...newRecord };
         } else {
@@ -104,7 +98,7 @@ app.post('/api/update-hits', (req, res) => {
         }
     });
 
-    if (databaseHits.length > 2500) databaseHits = databaseHits.slice(0, 2500);
+    if (databaseHits.length > 2000) databaseHits = databaseHits.slice(0, 2000);
 
     io.emit('dashboard-update', { liveHits: databaseHits });
     res.sendStatus(200);
@@ -117,4 +111,4 @@ app.post('/api/reset', (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-http.listen(PORT, '0.0.0.0', () => console.log(`Server is running...`));
+http.listen(PORT, '0.0.0.0', () => console.log(`Server Running`));
