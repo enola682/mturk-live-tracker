@@ -10,14 +10,12 @@ const path = require('path');
 
 app.use(cors());
 app.use(express.json());
-
-// ড্যাশবোর্ড ফাইলগুলো লোড করার জন্য রুট পাথ সেটআপ
 app.use(express.static(path.join(__dirname, '/')));
 
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
 let userTeams = {};
 
-// গুগল শিট থেকে নাম ও টিম রিয়েল-টাইমে টেনে আনা
+// গুগল শিট ডেটা সিঙ্ক ফাংশন
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
@@ -36,31 +34,38 @@ async function syncGoogleSheet() {
             }
         });
         userTeams = updatedTeams;
-        console.log("Sync Done. Workers Loaded:", Object.keys(userTeams).length);
+        console.log("Sync Done. Workers:", Object.keys(userTeams).length);
     } catch (e) { 
-        console.log("Google Sheet Sync Error:", e.message); 
+        console.log("Sheet Sync Error:", e.message); 
     }
 }
 
-// প্রতি ৩০ সেকেন্ড পরপর শিট আপডেট করবে
 setInterval(syncGoogleSheet, 30000);
 syncGoogleSheet();
 
-// আরডিপি (RDP) থেকে হিট রিসিভ করার এন্ডপয়েন্ট
+// আরডিপি থেকে হিট ডাটা রিসিভ
 app.post('/api/update-hits', (req, res) => {
     const hits = req.body.hits || [];
     
-    // প্রতিটা হিটের সাথে শিট থেকে নাম এবং টিম ম্যাচ করানো (প্রধান ফিক্স)
+    // গুগল শিটের আইডি থেকে নাম ও টিম ফিল্ড অ্যাড করা হচ্ছে
     const processedHits = hits.map(hit => {
-        const info = userTeams[hit.workerId.trim()] || { username: hit.workerId, team: 'Unknown' };
+        const info = userTeams[hit.workerId?.trim()] || { username: hit.workerId, team: 'Unknown' };
         return { 
             ...hit, 
             username: info.username, 
-            team: info.team 
+            team: info.team,
+            status: hit.status || 'Active',
+            requester: hit.requester || 'N/A',
+            timeLeft: hit.timeLeft || 'Just Now'
         };
     });
     
     io.emit('dashboard-update', { liveHits: processedHits });
+    res.sendStatus(200);
+});
+
+app.post('/api/reset', (req, res) => {
+    io.emit('dashboard-update', { liveHits: [] });
     res.sendStatus(200);
 });
 
