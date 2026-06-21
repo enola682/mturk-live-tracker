@@ -1,20 +1,23 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, { cors: { origin: "*" } });
+const io = require('socket.io')(http, { 
+    cors: { origin: "*" },
+    transports: ["websocket", "polling"]
+});
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '/')));
+app.use(express.static(__dirname));
 
 const SPREADSHEET_ID = '1cryIViTqSQLPhskdKzLuDYYN8Xs70a6U95gfXFkHXv0'; 
 let userTeams = {};
 let databaseHits = []; 
 
-// গুগল শিট ডেটা সিঙ্ক মেথড (ক্যাশ ব্রেকারসহ ১০০% ফিক্স)
+// গুগল শিট ডেটা অটো সিঙ্ক
 async function syncGoogleSheet() {
     try {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&t=${Date.now()}`;
@@ -35,30 +38,41 @@ async function syncGoogleSheet() {
             }
         });
         userTeams = updatedTeams;
-        console.log("Google Sheet Data Successfully Synced. Total Workers:", Object.keys(userTeams).length);
+        console.log("Google Sheet Connected. Total Loaded: ", Object.keys(userTeams).length);
     } catch (e) { 
-        console.log("Google Sheet Sync Error:", e.message); 
+        console.log("Google Sheet Sync Error: ", e.message); 
     }
 }
 
 setInterval(syncGoogleSheet, 30000);
 syncGoogleSheet();
 
+// রুট রাউট ফিক্স (Cannot GET / এরর বন্ধ)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// লাইভ ডেটা রিসিভার এপিআই
 app.post('/api/update-hits', (req, res) => {
     const incoming = req.body.hits || [];
     
     incoming.forEach(hit => {
-        if (!hit.workerId || hit.workerId.toString().trim() === "" || hit.workerId === "COPIED") return;
+        // যদি workerId একদম ফাঁকা থাকে তবেই শুধু বাদ যাবে, নতুবা ডাটা প্রসেস হবে
+        if (!hit.workerId || hit.workerId.toString().trim() === "") return;
         
-        const wIdClean = hit.workerId.toString().trim().toUpperCase();
-        // শিট থেকে ম্যাচিং, না পাওয়া গেলে আইডিটিই নাম হিসেবে যাবে
-        const info = userTeams[wIdClean] || { username: hit.workerId.toString().trim(), team: "Unknown Team" };
+        const rawId = hit.workerId.toString().trim();
+        const wIdClean = rawId.toUpperCase();
         
-        // ওরিজিনাল স্ক্রিনশট অনুযায়ী ডেটা অবজেক্ট তৈরি
+        // শিটে আইডি না মিললে এক্সটেনশনের পাঠানো ইউজারনেম অথবা আইডটাই নাম হিসেবে ব্যাকআপ থাকবে
+        const info = userTeams[wIdClean] || { 
+            username: hit.username || rawId, 
+            team: "Unknown" 
+        };
+        
         const newRecord = {
-            workerId: hit.workerId.toString().trim(),
-            username: hit.username || info.username, // ওরিজিনাল শিট/আরডিপি ইউজারনেম 
-            workerName: info.username, // অ্যাকোর্ডিয়ান গ্রুপিংয়ের জন্য আসল নাম
+            workerId: rawId,
+            username: hit.username || info.username, 
+            workerName: info.username, 
             team: info.team,
             requester: hit.requester || 'N/A',
             title: hit.title || 'No Title',
@@ -69,6 +83,7 @@ app.post('/api/update-hits', (req, res) => {
             timestamp: Date.now()
         };
 
+        // ইউনিক ডেটা হ্যান্ডলিং (আইডি এবং টাইটেল দিয়ে ইউনিক ফিল্টার)
         const idx = databaseHits.findIndex(h => h.workerId.toUpperCase() === wIdClean && h.title === hit.title);
         if (idx > -1) {
             databaseHits[idx] = { ...databaseHits[idx], ...newRecord };
@@ -77,18 +92,19 @@ app.post('/api/update-hits', (req, res) => {
         }
     });
 
-    if (databaseHits.length > 3000) databaseHits = databaseHits.slice(0, 3000);
+    if (databaseHits.length > 2500) databaseHits = databaseHits.slice(0, 2500);
 
+    // সকেটে রিয়েল-টাইম ব্রডকাস্ট
     io.emit('dashboard-update', { liveHits: databaseHits });
     res.sendStatus(200);
 });
 
+// ডাটাবেজ রিসেট এপিআই
 app.post('/api/reset', (req, res) => {
     databaseHits = [];
     io.emit('dashboard-update', { liveHits: [] });
     res.sendStatus(200);
 });
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-
-http.listen(process.env.PORT || 10000, '0.0.0.0', () => console.log('Server is active'));
+const PORT = process.env.PORT || 10000;
+http.listen(PORT, '0.0.0.0', () => console.log(`Server Running on Port ${PORT}`));
