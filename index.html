@@ -3,38 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTurk Live Tracker // Cloud Dashboard</title>
+    <title>MTurk HIT Tracker // LIVE</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #0b0e14; color: #e2e8f0; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; background: #111622; padding: 15px 25px; border-radius: 8px; margin-bottom: 20px; border-bottom: 3px solid #00a8ff; }
-        .logo { font-size: 24px; font-weight: bold; color: #00a8ff; }
-        .sync-badge { background: #00b894; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: #111622; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #222f3e; }
-        .stat-card h3 { font-size: 12px; color: #8a99ad; text-transform: uppercase; margin-bottom: 5px; }
-        .stat-card p { font-size: 22px; font-weight: bold; color: #fff; }
-        .stat-card p.highlight { color: #f1c40f; }
+        
+        /* Header & Filters */
+        .header { display: flex; justify-content: space-between; align-items: center; background: #111622; padding: 15px 25px; border-radius: 8px; margin-bottom: 20px; border-bottom: 2px solid #00a8ff; }
+        .logo { font-size: 22px; font-weight: bold; color: #00a8ff; display: flex; align-items: center; gap: 10px; }
+        .badge { background: #00b894; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: normal; }
+        .filter-section { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        select, .btn { background: #111622; color: #fff; border: 1px solid #222f3e; padding: 8px 15px; border-radius: 6px; font-size: 13px; outline: none; cursor: pointer; }
+        .btn-group { display: flex; background: #111622; border-radius: 6px; overflow: hidden; border: 1px solid #222f3e; }
+        .btn-tab { background: transparent; color: #8a99ad; border: none; padding: 8px 15px; font-size: 13px; cursor: pointer; }
+        .btn-tab.active { background: #00a8ff; color: white; }
+        .btn-reset { background: #ea2027; border: none; color: white; font-weight: bold; margin-left: auto; }
+
+        /* Stats Grid (আপনার আগের সব বক্স) */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #111622; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #222f3e; position: relative; }
+        .stat-card h3 { font-size: 11px; color: #8a99ad; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+        .stat-card p { font-size: 24px; font-weight: bold; color: #fff; }
+        .stat-card p.active-val { color: #2ecc71; }
+        .stat-card p.earned-val { color: #f1c40f; }
+        .stat-card p.worker-val { color: #9b59b6; }
+        .stat-card p.team-val { color: #3498db; }
+        .stat-card p.submit-val { color: #e67e22; }
+        .stat-card p.return-val { color: #e74c3c; }
+
+        /* Table Area */
         .table-container { background: #111622; border-radius: 8px; overflow: hidden; border: 1px solid #222f3e; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #1a233a; color: #8a99ad; padding: 12px 15px; font-size: 14px; text-transform: uppercase; }
-        td { padding: 12px 15px; border-bottom: 1px solid #1e272e; font-size: 14px; }
+        th { background: #1a233a; color: #8a99ad; padding: 12px 15px; font-size: 12px; text-transform: uppercase; font-weight: 600; }
+        td { padding: 12px 15px; border-bottom: 1px solid #1e272e; font-size: 13px; color: #cbd5e1; }
         tr:hover { background: #161f33; }
-        .no-data { padding: 4px; text-align: center; color: #576574; }
+        .no-data { padding: 40px; text-align: center; color: #576574; font-size: 14px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">MTURK PRO // <span class="sync-badge">24/7 CLOUD LIVE</span></div>
-        <div id="sync-time" style="color: #8a99ad;">Last Cloud Sync: --:--:--</div>
+        <div class="logo">MTURK PRO // <span class="badge">• 24/7 CLOUD LIVE</span></div>
+        <div id="sync-time" style="color: #8a99ad; font-size: 13px;">Last Cloud Sync: --:--:--</div>
+    </div>
+
+    <div class="filter-section">
+        <select id="filter-team"><option>All Teams (গুগল শিট)</option></select>
+        <select id="filter-worker"><option>All Workers</option></select>
+        <select id="filter-status"><option>All Status</option></select>
+        <div class="btn-group">
+            <button class="btn-tab active">Today</button>
+            <button class="btn-tab">7 Days</button>
+            <button class="btn-tab">30 Days</button>
+        </div>
+        <button class="btn btn-reset" onclick="resetData()">Reset Database</button>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><h3>Active Now</h3><p id="stat-active">0</p></div>
-        <div class="stat-card"><h3>Estimated Earned</h3><p id="stat-earned" class="highlight">$0.00</p></div>
-        <div class="stat-card"><h3>Total Hits</h3><p id="stat-total">0</p></div>
+        <div class="stat-card"><h3>Active Now</h3><p id="box-active" class="active-val">0</p></div>
+        <div class="stat-card"><h3>Total Selected Hits</h3><p id="box-total">0</p></div>
+        <div class="stat-card"><h3>Estimated Earned</h3><p id="box-earned" class="earned-val">$0.00</p></div>
+        <div class="stat-card"><h3>Active Workers</h3><p id="box-workers" class="worker-val">0</p></div>
+        <div class="stat-card"><h3>Active Teams</h3><p id="box-teams" class="team-val">0</p></div>
+        <div class="stat-card"><h3>Submitted</h3><p id="box-submitted" class="submit-val">0</p></div>
+        <div class="stat-card"><h3>Returned</h3><p id="box-returned" class="return-val">0</p></div>
     </div>
 
     <div class="table-container">
@@ -43,13 +76,16 @@
                 <tr>
                     <th>Team Name</th>
                     <th>Worker Name (ID)</th>
+                    <th>Requester</th>
                     <th>HIT Title</th>
                     <th>Reward</th>
+                    <th>Time Left / Date</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody id="table-body">
                 <tr>
-                    <td colspan="4" class="no-data">Waiting for real-time cloud streams...</td>
+                    <td colspan="7" class="no-data">Waiting for real-time cloud streams...</td>
                 </tr>
             </tbody>
         </table>
@@ -68,34 +104,66 @@
             const tbody = document.getElementById('table-body');
             const hits = data.liveHits || [];
             
-            // স্ট্যাটাস বাটন ক্যালকুলেশন
-            document.getElementById('stat-active').innerText = hits.length;
-            document.getElementById('stat-total').innerText = hits.length;
+            // বক্সগুলোর হিসাব-নিকাশ
+            document.getElementById('box-active').innerText = hits.length;
+            document.getElementById('box-total').innerText = hits.length;
             
             let totalEarned = 0;
+            let uniqueWorkers = new Set();
+            let uniqueTeams = new Set();
+            let submittedCount = 0;
+            let returnedCount = 0;
 
             if (hits.length > 0) {
                 tbody.innerHTML = hits.map(hit => {
-                    // রিওয়ার্ড থেকে ডলার সাইন সরিয়ে হিসেব করা
                     const rewardNum = parseFloat(hit.reward.replace('$', '')) || 0;
                     totalEarned += rewardNum;
+                    
+                    if(hit.workerId) uniqueWorkers.add(hit.workerId);
+                    if(hit.team && hit.team !== 'Unknown') uniqueTeams.add(hit.team);
+                    
+                    // স্ট্যাটাস কাউন্ট লজিক
+                    const status = (hit.status || 'Active').toLowerCase();
+                    if(status === 'submitted') submittedCount++;
+                    if(status === 'returned') returnedCount++;
 
                     return `
                         <tr>
-                            <td style="color: #00a8ff; font-weight: bold;">${hit.team}</td>
-                            <td>${hit.username} <span style="color: #576574; font-size: 11px;">(${hit.workerId})</span></td>
-                            <td>${hit.title}</td>
-                            <td style="color: #2ecc71; font-weight: bold;">${hit.reward}</td>
+                            <td style="color: #00a8ff; font-weight: 600;">${hit.team || 'Unknown'}</td>
+                            <td>${hit.username || 'Unknown'} <span style="color: #576574; font-size: 11px;">(${hit.workerId || ''})</span></td>
+                            <td>${hit.requester || 'N/A'}</td>
+                            <td>${hit.title || 'No Title'}</td>
+                            <td style="color: #2ecc71; font-weight: bold;">${hit.reward || '$0.00'}</td>
+                            <td>${hit.timeLeft || 'Just Now'}</td>
+                            <td><span class="badge" style="background: ${status === 'returned' ? '#e74c3c' : status === 'submitted' ? '#e67e22' : '#2ecc71'}">${hit.status || 'Active'}</span></td>
                         </tr>
                     `;
                 }).join('');
                 
-                document.getElementById('stat-earned').innerText = "$" + totalEarned.toFixed(2);
+                // বক্সগুলোর ভ্যালু আপডেট
+                document.getElementById('box-earned').innerText = "$" + totalEarned.toFixed(2);
+                document.getElementById('box-workers').innerText = uniqueWorkers.size;
+                document.getElementById('box-teams').innerText = uniqueTeams.size;
+                document.getElementById('box-submitted').innerText = submittedCount;
+                document.getElementById('box-returned').innerText = returnedCount;
             } else {
-                tbody.innerHTML = `<tr><td colspan="4" class="no-data">No active hits right now.</td></tr>`;
-                document.getElementById('stat-earned').innerText = "$0.00";
+                tbody.innerHTML = `<tr><td colspan="7" class="no-data">Waiting for real-time cloud streams...</td></tr>`;
+                clearBoxes();
             }
         });
+
+        function clearBoxes() {
+            document.getElementById('box-earned').innerText = "$0.00";
+            document.getElementById('box-workers').innerText = "0";
+            document.getElementById('box-teams').innerText = "0";
+            document.getElementById('box-submitted').innerText = "0";
+            document.getElementById('box-returned').innerText = "0";
+        }
+
+        function resetData() {
+            fetch("https://mturk-live-tracker.onrender.com/api/reset", { method: "POST" })
+            .then(() => console.log("Database reset request sent."));
+        }
     </script>
 </body>
 </html>
